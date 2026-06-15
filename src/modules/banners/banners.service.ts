@@ -1,17 +1,6 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  FindOptionsWhere,
-  IsNull,
-  LessThanOrEqual,
-  Like,
-  MoreThanOrEqual,
-  Repository,
-} from 'typeorm';
+import { FindOptionsWhere, Like, Repository } from 'typeorm';
 import { CreateBannerDto } from './dto/create-banner.dto';
 import { QueryBannersDto } from './dto/query-banners.dto';
 import { UpdateBannerStatusDto } from './dto/update-banner-status.dto';
@@ -26,11 +15,6 @@ export class BannersService {
   ) {}
 
   async create(createBannerDto: CreateBannerDto) {
-    this.validateBannerTimeRange(
-      createBannerDto.startTime,
-      createBannerDto.endTime,
-    );
-
     const banner = this.bannersRepository.create({
       ...createBannerDto,
       sort: createBannerDto.sort ?? 0,
@@ -81,17 +65,6 @@ export class BannersService {
   async update(id: number, updateBannerDto: UpdateBannerDto) {
     const banner = await this.findBannerOrFail(id);
 
-    const startTime =
-      updateBannerDto.startTime !== undefined
-        ? updateBannerDto.startTime
-        : banner.startTime ?? undefined;
-    const endTime =
-      updateBannerDto.endTime !== undefined
-        ? updateBannerDto.endTime
-        : banner.endTime ?? undefined;
-
-    this.validateBannerTimeRange(startTime, endTime);
-
     Object.assign(banner, updateBannerDto);
     return this.bannersRepository.save(banner);
   }
@@ -113,31 +86,8 @@ export class BannersService {
   }
 
   async findActiveList() {
-    const now = new Date();
-
     return this.bannersRepository.find({
-      where: [
-        {
-          isEnabled: true,
-          startTime: LessThanOrEqual(now),
-          endTime: MoreThanOrEqual(now),
-        },
-        {
-          isEnabled: true,
-          startTime: LessThanOrEqual(now),
-          endTime: IsNull(),
-        },
-        {
-          isEnabled: true,
-          startTime: IsNull(),
-          endTime: MoreThanOrEqual(now),
-        },
-        {
-          isEnabled: true,
-          startTime: IsNull(),
-          endTime: IsNull(),
-        },
-      ],
+      where: { isEnabled: true },
       order: {
         sort: 'ASC',
         id: 'DESC',
@@ -153,11 +103,5 @@ export class BannersService {
     }
 
     return banner;
-  }
-
-  private validateBannerTimeRange(startTime?: Date, endTime?: Date) {
-    if (startTime && endTime && startTime.getTime() > endTime.getTime()) {
-      throw new BadRequestException('结束时间不能早于开始时间');
-    }
   }
 }

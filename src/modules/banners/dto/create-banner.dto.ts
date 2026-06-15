@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
-  IsDate,
   IsInt,
   IsOptional,
   IsString,
@@ -19,7 +18,8 @@ export class CreateBannerDto {
 
   @ApiProperty({
     example: 'http://localhost:3000/uploads/images/banner-1.jpg',
-    description: '轮播图图片地址，请先调用公共图片上传接口，再回填返回的 url',
+    description:
+      '轮播图图片地址，请先调用公共图片上传接口，再回填返回的 url',
   })
   @IsString({ message: '轮播图图片地址必须为字符串' })
   @IsUrl(
@@ -59,22 +59,4 @@ export class CreateBannerDto {
   })
   @IsBoolean({ message: '是否启用必须为布尔值' })
   isEnabled?: boolean;
-
-  @ApiPropertyOptional({
-    example: '2026-04-18 00:00:00',
-    description: '生效开始时间',
-  })
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate({ message: '开始时间格式不正确' })
-  startTime?: Date;
-
-  @ApiPropertyOptional({
-    example: '2026-04-30 23:59:59',
-    description: '生效结束时间',
-  })
-  @IsOptional()
-  @Type(() => Date)
-  @IsDate({ message: '结束时间格式不正确' })
-  endTime?: Date;
 }

@@ -17,10 +17,4 @@ export class Banner extends AppBaseEntity {
 
   @Column({ default: true })
   isEnabled!: boolean;
-
-  @Column({ type: 'datetime', nullable: true })
-  startTime?: Date | null;
-
-  @Column({ type: 'datetime', nullable: true })
-  endTime?: Date | null;
 }
