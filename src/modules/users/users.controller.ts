@@ -24,6 +24,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { UpdateUserPayPasswordDto } from './dto/update-user-pay-password.dto';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
@@ -79,7 +80,7 @@ export class UsersController {
     name: 'status',
     required: false,
     example: 1,
-    description: '状态筛选：1 正常，2 冻结',
+    description: '状态筛选：1 正常，0 冻结',
   })
   @Get()
   findAll(@Query() queryUsersDto: QueryUsersDto) {
@@ -139,6 +140,29 @@ export class UsersController {
     @Body() updateUserPasswordDto: UpdateUserPasswordDto,
   ) {
     return this.usersService.updatePassword(userId, updateUserPasswordDto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('user.password.update')
+  @OperationLog({ module: '用户管理', action: '修改用户支付密码' })
+  @ApiOperation({ summary: '修改用户支付密码' })
+  @ApiParam({
+    name: 'userId',
+    description: '用户业务编号',
+    example: 'U1713259000123',
+  })
+  @ApiBody({ type: UpdateUserPayPasswordDto })
+  @SuccessMessage('修改成功')
+  @Patch(':userId/pay-password')
+  updatePayPassword(
+    @Param('userId') userId: string,
+    @Body() updateUserPayPasswordDto: UpdateUserPayPasswordDto,
+  ) {
+    return this.usersService.updatePayPassword(
+      userId,
+      updateUserPayPasswordDto,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')

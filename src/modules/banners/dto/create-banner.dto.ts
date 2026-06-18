@@ -13,19 +13,15 @@ import {
 export class CreateBannerDto {
   @ApiProperty({ example: '首页大促轮播图', description: '轮播图标题' })
   @IsString({ message: '轮播图标题必须为字符串' })
-  @Length(2, 100, { message: '轮播图标题长度需在 2 到 100 个字符之间' })
+  @Length(2, 100, { message: '轮播图标题长度必须在 2 到 100 个字符之间' })
   title!: string;
 
   @ApiProperty({
     example: 'http://localhost:3000/uploads/images/banner-1.jpg',
-    description:
-      '轮播图图片地址，请先调用公共图片上传接口，再回填返回的 url',
+    description: '轮播图图片地址，请先调用公共图片上传接口，再回填返回的 url',
   })
   @IsString({ message: '轮播图图片地址必须为字符串' })
-  @IsUrl(
-    { require_tld: false },
-    { message: '轮播图图片地址格式不正确' },
-  )
+  @IsUrl({ require_tld: false }, { message: '轮播图图片地址格式不正确' })
   imageUrl!: string;
 
   @ApiPropertyOptional({

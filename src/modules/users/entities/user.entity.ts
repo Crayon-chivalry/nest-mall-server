@@ -24,6 +24,9 @@ export class User extends AppBaseEntity {
   @Column({ length: 100 })
   password!: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  payPassword?: string | null;
+
   @Column({ length: 30 })
   nickname!: string;
 

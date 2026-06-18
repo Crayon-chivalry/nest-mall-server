@@ -16,12 +16,13 @@ import {
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { UpdateUserPayPasswordDto } from './dto/update-user-pay-password.dto';
 import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { User } from './entities/user.entity';
 
-export type SafeUser = Omit<User, 'password'>;
+export type SafeUser = Omit<User, 'password' | 'payPassword'>;
 
 @Injectable()
 export class UsersService {
@@ -109,7 +110,7 @@ export class UsersService {
     const user = await this.usersRepository.findOne({ where: { id } });
 
     if (!user) {
-      throw new NotFoundException('用户不存在');
+      throw new NotFoundException('User not found');
     }
 
     return this.toSafeUser(user);
@@ -121,7 +122,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('用户不存在');
+      throw new NotFoundException('User not found');
     }
 
     return this.toSafeUser(user);
@@ -133,7 +134,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('用户不存在');
+      throw new NotFoundException('User not found');
     }
 
     if (
@@ -157,10 +158,29 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('用户不存在');
+      throw new NotFoundException('User not found');
     }
 
     user.password = await this.hashPassword(updateUserPasswordDto.password);
+    const savedUser = await this.usersRepository.save(user);
+    return this.toSafeUser(savedUser);
+  }
+
+  async updatePayPassword(
+    userId: string,
+    updateUserPayPasswordDto: UpdateUserPayPasswordDto,
+  ) {
+    const user = await this.usersRepository.findOne({
+      where: { userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.payPassword = await this.hashPassword(
+      updateUserPayPasswordDto.payPassword,
+    );
     const savedUser = await this.usersRepository.save(user);
     return this.toSafeUser(savedUser);
   }
@@ -171,7 +191,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('用户不存在');
+      throw new NotFoundException('User not found');
     }
 
     user.status = updateUserStatusDto.status;
@@ -181,18 +201,22 @@ export class UsersService {
 
   ensureUserEnabled(user: User) {
     if (user.status !== UserStatus.NORMAL) {
-      throw new BadRequestException('当前用户已被冻结');
+      throw new BadRequestException('Current user has been disabled');
     }
   }
 
   ensureAdmin(user: User) {
     if (user.role !== UserRole.ADMIN) {
-      throw new BadRequestException('当前用户不是管理员');
+      throw new BadRequestException('Current user is not an admin');
     }
   }
 
   toSafeUser(user: User): SafeUser {
-    const { password: _password, ...safeUser } = user;
+    const {
+      password: _password,
+      payPassword: _payPassword,
+      ...safeUser
+    } = user;
     return safeUser;
   }
 
@@ -206,7 +230,7 @@ export class UsersService {
     });
 
     if (existingUser) {
-      throw new BadRequestException('手机号已存在');
+      throw new BadRequestException('Phone already exists');
     }
   }
 
