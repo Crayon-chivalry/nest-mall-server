@@ -1,7 +1,7 @@
 import { AppBaseEntity } from 'src/common/entities/base.entity';
+import { Category } from 'src/modules/categories/entities/category.entity';
 import { CartItem } from 'src/modules/carts/entities/cart-item.entity';
 import { OrderItem } from 'src/modules/orders/entities/order-item.entity';
-import { Category } from 'src/modules/categories/entities/category.entity';
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
 @Entity('products')

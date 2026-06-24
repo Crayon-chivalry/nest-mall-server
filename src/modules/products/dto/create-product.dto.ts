@@ -24,7 +24,7 @@ export class CreateProductDto {
   @Min(0)
   stock!: number;
 
-  @ApiProperty({ example: 1, description: '分类 ID' })
+  @ApiProperty({ example: 2, description: '二级分类 ID' })
   @IsInt()
   @Min(1)
   categoryId!: number;

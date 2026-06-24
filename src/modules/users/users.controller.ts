@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -23,11 +24,9 @@ import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { DeleteUsersDto } from './dto/delete-users.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
-import { UpdateUserPayPasswordDto } from './dto/update-user-pay-password.dto';
-import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
-import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
-import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -80,11 +79,23 @@ export class UsersController {
     name: 'status',
     required: false,
     example: 1,
-    description: '状态筛选：1 正常，0 冻结',
+    description: '状态筛选：1 正常，2 冻结',
   })
   @Get()
   findAll(@Query() queryUsersDto: QueryUsersDto) {
     return this.usersService.findAll(queryUsersDto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('user.delete')
+  @OperationLog({ module: '用户管理', action: '批量删除用户' })
+  @ApiOperation({ summary: '批量删除用户' })
+  @ApiBody({ type: DeleteUsersDto })
+  @SuccessMessage('删除成功')
+  @Delete()
+  remove(@Body() deleteUsersDto: DeleteUsersDto) {
+    return this.usersService.remove(deleteUsersDto);
   }
 
   @ApiBearerAuth('JWT-auth')
@@ -105,83 +116,20 @@ export class UsersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.update')
-  @OperationLog({ module: '用户管理', action: '修改用户基本信息' })
-  @ApiOperation({ summary: '修改用户基本信息' })
+  @OperationLog({ module: '用户管理', action: '修改用户信息' })
+  @ApiOperation({ summary: '统一修改用户信息' })
   @ApiParam({
     name: 'userId',
     description: '用户业务编号',
     example: 'U1713259000123',
   })
-  @ApiBody({ type: UpdateUserProfileDto })
+  @ApiBody({ type: UpdateUserDto })
   @SuccessMessage('修改成功')
   @Patch(':userId')
-  updateProfile(
+  update(
     @Param('userId') userId: string,
-    @Body() updateUserProfileDto: UpdateUserProfileDto,
+    @Body() updateUserDto: UpdateUserDto,
   ) {
-    return this.usersService.updateProfile(userId, updateUserProfileDto);
-  }
-
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('user.password.update')
-  @OperationLog({ module: '用户管理', action: '修改用户密码' })
-  @ApiOperation({ summary: '修改用户密码' })
-  @ApiParam({
-    name: 'userId',
-    description: '用户业务编号',
-    example: 'U1713259000123',
-  })
-  @ApiBody({ type: UpdateUserPasswordDto })
-  @SuccessMessage('修改成功')
-  @Patch(':userId/password')
-  updatePassword(
-    @Param('userId') userId: string,
-    @Body() updateUserPasswordDto: UpdateUserPasswordDto,
-  ) {
-    return this.usersService.updatePassword(userId, updateUserPasswordDto);
-  }
-
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('user.password.update')
-  @OperationLog({ module: '用户管理', action: '修改用户支付密码' })
-  @ApiOperation({ summary: '修改用户支付密码' })
-  @ApiParam({
-    name: 'userId',
-    description: '用户业务编号',
-    example: 'U1713259000123',
-  })
-  @ApiBody({ type: UpdateUserPayPasswordDto })
-  @SuccessMessage('修改成功')
-  @Patch(':userId/pay-password')
-  updatePayPassword(
-    @Param('userId') userId: string,
-    @Body() updateUserPayPasswordDto: UpdateUserPayPasswordDto,
-  ) {
-    return this.usersService.updatePayPassword(
-      userId,
-      updateUserPayPasswordDto,
-    );
-  }
-
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('user.status.update')
-  @OperationLog({ module: '用户管理', action: '修改用户状态' })
-  @ApiOperation({ summary: '修改用户状态' })
-  @ApiParam({
-    name: 'userId',
-    description: '用户业务编号',
-    example: 'U1713259000123',
-  })
-  @ApiBody({ type: UpdateUserStatusDto })
-  @SuccessMessage('修改成功')
-  @Patch(':userId/status')
-  updateStatus(
-    @Param('userId') userId: string,
-    @Body() updateUserStatusDto: UpdateUserStatusDto,
-  ) {
-    return this.usersService.updateStatus(userId, updateUserStatusDto);
+    return this.usersService.update(userId, updateUserDto);
   }
 }

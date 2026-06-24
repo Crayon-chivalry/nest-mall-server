@@ -10,16 +10,15 @@ import { UserStatus } from 'src/common/enums/user-status.enum';
 import {
   FindOperator,
   FindOptionsWhere,
+  In,
   Like,
   Repository,
 } from 'typeorm';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { DeleteUsersDto } from './dto/delete-users.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
-import { UpdateUserPayPasswordDto } from './dto/update-user-pay-password.dto';
-import { UpdateUserPasswordDto } from './dto/update-user-password.dto';
-import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
-import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 
 export type SafeUser = Omit<User, 'password' | 'payPassword'>;
@@ -37,6 +36,9 @@ export class UsersService {
     const user = this.usersRepository.create({
       ...createUserDto,
       password: await this.hashPassword(createUserDto.password),
+      payPassword: createUserDto.payPassword
+        ? await this.hashPassword(createUserDto.payPassword)
+        : null,
       userId: await this.generateUserId(),
       status: createUserDto.status ?? UserStatus.NORMAL,
       role: UserRole.CUSTOMER,
@@ -128,31 +130,33 @@ export class UsersService {
     return this.toSafeUser(user);
   }
 
-  async updateProfile(userId: string, updateUserProfileDto: UpdateUserProfileDto) {
-    const user = await this.usersRepository.findOne({
-      where: { userId },
+  async remove(deleteUsersDto: DeleteUsersDto) {
+    const userIds = [...new Set(deleteUsersDto.userIds)];
+    const users = await this.usersRepository.find({
+      where: {
+        userId: In(userIds),
+      },
+      select: ['id', 'userId'],
     });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (users.length !== userIds.length) {
+      const foundUserIds = new Set(users.map((user) => user.userId));
+      const missingUserIds = userIds.filter((userId) => !foundUserIds.has(userId));
+      throw new NotFoundException(
+        `Users not found: ${missingUserIds.join(', ')}`,
+      );
     }
 
-    if (
-      updateUserProfileDto.phone &&
-      updateUserProfileDto.phone !== user.phone
-    ) {
-      await this.ensurePhoneUnique(updateUserProfileDto.phone);
-    }
+    await this.usersRepository.remove(users);
 
-    Object.assign(user, updateUserProfileDto);
-    const savedUser = await this.usersRepository.save(user);
-    return this.toSafeUser(savedUser);
+    return {
+      userIds,
+      deletedCount: users.length,
+      success: true,
+    };
   }
 
-  async updatePassword(
-    userId: string,
-    updateUserPasswordDto: UpdateUserPasswordDto,
-  ) {
+  async update(userId: string, updateUserDto: UpdateUserDto) {
     const user = await this.usersRepository.findOne({
       where: { userId },
     });
@@ -161,40 +165,34 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    user.password = await this.hashPassword(updateUserPasswordDto.password);
-    const savedUser = await this.usersRepository.save(user);
-    return this.toSafeUser(savedUser);
-  }
-
-  async updatePayPassword(
-    userId: string,
-    updateUserPayPasswordDto: UpdateUserPayPasswordDto,
-  ) {
-    const user = await this.usersRepository.findOne({
-      where: { userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
+      await this.ensurePhoneUnique(updateUserDto.phone);
     }
 
-    user.payPassword = await this.hashPassword(
-      updateUserPayPasswordDto.payPassword,
-    );
-    const savedUser = await this.usersRepository.save(user);
-    return this.toSafeUser(savedUser);
-  }
-
-  async updateStatus(userId: string, updateUserStatusDto: UpdateUserStatusDto) {
-    const user = await this.usersRepository.findOne({
-      where: { userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (updateUserDto.phone !== undefined) {
+      user.phone = updateUserDto.phone;
     }
 
-    user.status = updateUserStatusDto.status;
+    if (updateUserDto.nickname !== undefined) {
+      user.nickname = updateUserDto.nickname;
+    }
+
+    if (updateUserDto.avatar !== undefined) {
+      user.avatar = updateUserDto.avatar;
+    }
+
+    if (updateUserDto.status !== undefined) {
+      user.status = updateUserDto.status;
+    }
+
+    if (updateUserDto.password !== undefined) {
+      user.password = await this.hashPassword(updateUserDto.password);
+    }
+
+    if (updateUserDto.payPassword !== undefined) {
+      user.payPassword = await this.hashPassword(updateUserDto.payPassword);
+    }
+
     const savedUser = await this.usersRepository.save(user);
     return this.toSafeUser(savedUser);
   }
