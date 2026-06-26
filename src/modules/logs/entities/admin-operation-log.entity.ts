@@ -1,4 +1,5 @@
 import { AppBaseEntity } from 'src/common/entities/base.entity';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { Column, Entity } from 'typeorm';
 
 @Entity('admin_operation_logs')
@@ -17,6 +18,13 @@ export class AdminOperationLog extends AppBaseEntity {
 
   @Column({ length: 100 })
   action!: string;
+
+  @Column({
+    type: 'enum',
+    enum: OperationLogType,
+    default: OperationLogType.NORMAL,
+  })
+  type!: OperationLogType;
 
   @Column({ length: 20 })
   method!: string;

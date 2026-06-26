@@ -16,7 +16,9 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { OperationLog } from 'src/common/decorators/operation-log.decorator';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { CreateProductDto } from './dto/create-product.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { UpdateProductStatusDto } from './dto/update-product-status.dto';
@@ -30,6 +32,7 @@ export class ProductsController {
 
   @ApiOperation({ summary: '创建商品' })
   @ApiBody({ type: CreateProductDto })
+  @OperationLog({ module: '商品管理', action: '创建商品' })
   @SuccessMessage('创建成功')
   @Post()
   create(@Body() createProductDto: CreateProductDto) {
@@ -58,6 +61,7 @@ export class ProductsController {
   @ApiOperation({ summary: '修改商品' })
   @ApiParam({ name: 'id', description: '商品 ID', example: 1 })
   @ApiBody({ type: UpdateProductDto })
+  @OperationLog({ module: '商品管理', action: '修改商品' })
   @SuccessMessage('修改成功')
   @Patch(':id')
   update(
@@ -70,6 +74,11 @@ export class ProductsController {
   @ApiOperation({ summary: '修改商品上架状态' })
   @ApiParam({ name: 'id', description: '商品 ID', example: 1 })
   @ApiBody({ type: UpdateProductStatusDto })
+  @OperationLog({
+    module: '商品管理',
+    action: '修改商品上架状态',
+    type: OperationLogType.DANGEROUS,
+  })
   @SuccessMessage('修改成功')
   @Patch(':id/status')
   updateStatus(
@@ -81,6 +90,11 @@ export class ProductsController {
 
   @ApiOperation({ summary: '删除商品' })
   @ApiParam({ name: 'id', description: '商品 ID', example: 1 })
+  @OperationLog({
+    module: '商品管理',
+    action: '删除商品',
+    type: OperationLogType.DANGEROUS,
+  })
   @SuccessMessage('删除成功')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {

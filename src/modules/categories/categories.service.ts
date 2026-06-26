@@ -36,9 +36,10 @@ export class CategoriesService {
     const page = queryDto.page ?? 1;
     const pageSize = queryDto.pageSize ?? 10;
     const where: Record<string, unknown> = {};
+    const keyword = queryDto.keyword?.trim();
 
-    if (queryDto.keyword) {
-      where.name = Like(`%${queryDto.keyword}%`);
+    if (keyword) {
+      where.name = Like(`%${keyword}%`);
     }
 
     if (queryDto.parentId !== undefined) {
@@ -83,23 +84,87 @@ export class CategoriesService {
       ...where,
       parent: IsNull(),
     };
-    const [roots, total] = await this.categoriesRepository.findAndCount({
-      where: rootWhere,
-      relations: {
-        parent: true,
-        children: true,
-      },
-      order: {
-        sort: 'ASC',
-        id: 'ASC',
-        children: {
+    let roots: Category[] = [];
+    let total = 0;
+
+    if (keyword) {
+      const keywordWhere: Record<string, unknown>[] = [
+        {
+          name: Like(`%${keyword}%`),
+          parent: IsNull(),
+        },
+        {
+          name: Like(`%${keyword}%`),
+          parent: {
+            parent: IsNull(),
+          },
+        },
+      ];
+
+      if (queryDto.isVisible !== undefined) {
+        keywordWhere[0].isVisible = queryDto.isVisible;
+        keywordWhere[1].isVisible = queryDto.isVisible;
+      }
+
+      const matchedCategories = await this.categoriesRepository.find({
+        where: keywordWhere,
+        relations: {
+          parent: true,
+        },
+      });
+      const matchedRootIds = Array.from(
+        new Set(
+          matchedCategories.map((item) =>
+            item.parentId ? item.parentId : item.id,
+          ),
+        ),
+      );
+
+      total = matchedRootIds.length;
+
+      if (matchedRootIds.length > 0) {
+        roots = await this.categoriesRepository.find({
+          where: {
+            id: In(matchedRootIds),
+            ...(queryDto.isVisible !== undefined
+              ? { isVisible: queryDto.isVisible }
+              : {}),
+          },
+          relations: {
+            parent: true,
+            children: true,
+          },
+          order: {
+            sort: 'ASC',
+            id: 'ASC',
+            children: {
+              sort: 'ASC',
+              id: 'ASC',
+            },
+          },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        });
+      }
+    } else {
+      [roots, total] = await this.categoriesRepository.findAndCount({
+        where: rootWhere,
+        relations: {
+          parent: true,
+          children: true,
+        },
+        order: {
           sort: 'ASC',
           id: 'ASC',
+          children: {
+            sort: 'ASC',
+            id: 'ASC',
+          },
         },
-      },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      });
+    }
 
     const rootIds = roots.map((item) => item.id);
 

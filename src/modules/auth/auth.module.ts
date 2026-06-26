@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { LogsModule } from '../logs/logs.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
@@ -26,6 +27,7 @@ function getJwtExpiresIn(configService: ConfigService): JwtExpiresIn {
   imports: [
     UsersModule,
     RbacModule,
+    LogsModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

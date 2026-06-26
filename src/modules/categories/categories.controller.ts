@@ -16,7 +16,9 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { OperationLog } from 'src/common/decorators/operation-log.decorator';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { QueryCategoriesDto } from './dto/query-categories.dto';
@@ -29,6 +31,7 @@ export class CategoriesController {
 
   @ApiOperation({ summary: '创建商品分类' })
   @ApiBody({ type: CreateCategoryDto })
+  @OperationLog({ module: '分类管理', action: '创建分类' })
   @SuccessMessage('创建成功')
   @Post()
   create(@Body() createCategoryDto: CreateCategoryDto) {
@@ -63,6 +66,7 @@ export class CategoriesController {
   @ApiOperation({ summary: '修改商品分类' })
   @ApiParam({ name: 'id', description: '分类 ID', example: 1 })
   @ApiBody({ type: UpdateCategoryDto })
+  @OperationLog({ module: '分类管理', action: '修改分类' })
   @SuccessMessage('修改成功')
   @Patch(':id')
   update(
@@ -74,6 +78,11 @@ export class CategoriesController {
 
   @ApiOperation({ summary: '删除商品分类' })
   @ApiParam({ name: 'id', description: '分类 ID', example: 1 })
+  @OperationLog({
+    module: '分类管理',
+    action: '删除分类',
+    type: OperationLogType.DANGEROUS,
+  })
   @SuccessMessage('删除成功')
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {

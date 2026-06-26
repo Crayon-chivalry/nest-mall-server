@@ -20,6 +20,7 @@ import {
 import { OperationLog } from 'src/common/decorators/operation-log.decorator';
 import { RequirePermissions } from 'src/common/decorators/require-permissions.decorator';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateAdminDto } from './dto/create-admin.dto';
@@ -36,6 +37,7 @@ export class UsersController {
 
   @ApiOperation({ summary: '创建商城用户' })
   @ApiBody({ type: CreateUserDto })
+  @OperationLog({ module: '用户管理', action: '创建用户' })
   @SuccessMessage('创建成功')
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
@@ -54,7 +56,6 @@ export class UsersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.view')
-  @OperationLog({ module: '用户管理', action: '查询用户列表' })
   @ApiOperation({ summary: '分页获取用户列表' })
   @ApiQuery({ name: 'page', required: false, example: 1, description: '页码' })
   @ApiQuery({
@@ -89,7 +90,11 @@ export class UsersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.delete')
-  @OperationLog({ module: '用户管理', action: '批量删除用户' })
+  @OperationLog({
+    module: '用户管理',
+    action: '批量删除用户',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '批量删除用户' })
   @ApiBody({ type: DeleteUsersDto })
   @SuccessMessage('删除成功')
@@ -101,7 +106,6 @@ export class UsersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.view')
-  @OperationLog({ module: '用户管理', action: '查询用户详情' })
   @ApiOperation({ summary: '获取单个用户信息' })
   @ApiParam({
     name: 'userId',

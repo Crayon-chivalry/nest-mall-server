@@ -18,6 +18,7 @@ import {
 import { OperationLog } from 'src/common/decorators/operation-log.decorator';
 import { RequirePermissions } from 'src/common/decorators/require-permissions.decorator';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -51,7 +52,6 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.permission.view')
-  @OperationLog({ module: '权限管理', action: '查询权限列表' })
   @ApiOperation({ summary: '获取权限列表' })
   @Get('permissions')
   findAllPermissions() {
@@ -59,7 +59,11 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.menu.create')
-  @OperationLog({ module: '轮播图管理', action: '初始化轮播图权限和菜单' })
+  @OperationLog({
+    module: '轮播图管理',
+    action: '初始化轮播图权限和菜单',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '初始化轮播图管理权限和菜单' })
   @SuccessMessage('初始化成功')
   @Post('bootstrap/banner-management')
@@ -85,7 +89,11 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.permission.delete')
-  @OperationLog({ module: '权限管理', action: '删除权限' })
+  @OperationLog({
+    module: '权限管理',
+    action: '删除权限',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '删除权限' })
   @ApiParam({ name: 'permissionId', description: '权限 ID', example: '1' })
   @SuccessMessage('删除成功')
@@ -105,7 +113,6 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.role.view')
-  @OperationLog({ module: '角色管理', action: '查询角色列表' })
   @ApiOperation({ summary: '获取角色列表' })
   @Get('roles')
   findAllRoles() {
@@ -113,7 +120,11 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.role.update', 'rbac.role.assign_menu')
-  @OperationLog({ module: '轮播图管理', action: '给角色分配轮播图管理资源' })
+  @OperationLog({
+    module: '轮播图管理',
+    action: '给角色分配轮播图管理资源',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '给角色一键分配轮播图管理权限和菜单' })
   @ApiParam({ name: 'roleId', description: '角色 ID', example: '1' })
   @SuccessMessage('分配成功')
@@ -139,7 +150,11 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.role.delete')
-  @OperationLog({ module: '角色管理', action: '删除角色' })
+  @OperationLog({
+    module: '角色管理',
+    action: '删除角色',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '删除角色' })
   @ApiParam({ name: 'roleId', description: '角色 ID', example: '1' })
   @SuccessMessage('删除成功')
@@ -159,7 +174,6 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.menu.view')
-  @OperationLog({ module: '菜单管理', action: '查询菜单树' })
   @ApiOperation({ summary: '获取菜单树' })
   @Get('menus')
   findAllMenus(): Promise<RouteTreeNode[]> {
@@ -181,7 +195,11 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.menu.delete')
-  @OperationLog({ module: '菜单管理', action: '删除菜单' })
+  @OperationLog({
+    module: '菜单管理',
+    action: '删除菜单',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '删除菜单' })
   @ApiParam({ name: 'menuId', description: '菜单 ID', example: '1' })
   @SuccessMessage('删除成功')
@@ -191,7 +209,11 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.user.assign_role')
-  @OperationLog({ module: '角色分配', action: '给管理员分配角色' })
+  @OperationLog({
+    module: '角色分配',
+    action: '给管理员分配角色',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '给管理员用户分配角色' })
   @ApiParam({
     name: 'userId',
@@ -209,7 +231,11 @@ export class RbacController {
   }
 
   @RequirePermissions('rbac.role.assign_menu')
-  @OperationLog({ module: '角色分配', action: '给角色分配菜单' })
+  @OperationLog({
+    module: '角色分配',
+    action: '给角色分配菜单',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '给角色分配菜单' })
   @ApiParam({
     name: 'roleId',

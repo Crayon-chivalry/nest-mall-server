@@ -21,6 +21,7 @@ import {
 import { OperationLog } from 'src/common/decorators/operation-log.decorator';
 import { RequirePermissions } from 'src/common/decorators/require-permissions.decorator';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BannersService } from './banners.service';
@@ -55,7 +56,6 @@ export class BannersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.view')
-  @OperationLog({ module: '轮播图管理', action: '查询轮播图列表' })
   @ApiOperation({ summary: '分页获取轮播图列表' })
   @ApiQuery({ name: 'page', required: false, example: 1, description: '页码' })
   @ApiQuery({
@@ -84,7 +84,6 @@ export class BannersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.view')
-  @OperationLog({ module: '轮播图管理', action: '查询轮播图详情' })
   @ApiOperation({ summary: '获取单个轮播图详情' })
   @ApiParam({ name: 'id', description: '轮播图 ID', example: 1 })
   @Get(':id')
@@ -111,7 +110,11 @@ export class BannersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.status.update')
-  @OperationLog({ module: '轮播图管理', action: '修改轮播图状态' })
+  @OperationLog({
+    module: '轮播图管理',
+    action: '修改轮播图状态',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '修改轮播图状态' })
   @ApiParam({ name: 'id', description: '轮播图 ID', example: 1 })
   @ApiBody({ type: UpdateBannerStatusDto })
@@ -127,7 +130,11 @@ export class BannersController {
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.delete')
-  @OperationLog({ module: '轮播图管理', action: '删除轮播图' })
+  @OperationLog({
+    module: '轮播图管理',
+    action: '删除轮播图',
+    type: OperationLogType.DANGEROUS,
+  })
   @ApiOperation({ summary: '删除轮播图' })
   @ApiParam({ name: 'id', description: '轮播图 ID', example: 1 })
   @SuccessMessage('删除成功')

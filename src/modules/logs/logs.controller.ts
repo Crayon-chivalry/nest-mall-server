@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { RequirePermissions } from 'src/common/decorators/require-permissions.decorator';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { QueryAdminOperationLogsDto } from './dto/query-admin-operation-logs.dto';
 import { LogsService } from './logs.service';
@@ -17,6 +18,13 @@ import { LogsService } from './logs.service';
 @Controller('logs')
 export class LogsController {
   constructor(private readonly logsService: LogsService) {}
+
+  @RequirePermissions('log.view')
+  @ApiOperation({ summary: '获取日志统计概览' })
+  @Get('admin-operation/summary')
+  getSummary() {
+    return this.logsService.getSummary();
+  }
 
   @RequirePermissions('log.view')
   @ApiOperation({ summary: '分页获取后台操作日志' })
@@ -50,6 +58,19 @@ export class LogsController {
     required: false,
     example: true,
     description: '是否成功筛选',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: OperationLogType,
+    example: OperationLogType.DANGEROUS,
+    description: '日志类型筛选',
+  })
+  @ApiQuery({
+    name: 'date',
+    required: false,
+    example: '2026-06-26',
+    description: '按日期筛选，格式 YYYY-MM-DD',
   })
   @Get('admin-operation')
   findAll(@Query() queryDto: QueryAdminOperationLogsDto) {

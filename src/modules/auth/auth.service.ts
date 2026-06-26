@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcryptjs';
+import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
+import { LogsService } from '../logs/logs.service';
 import { RbacService } from '../rbac/rbac.service';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -13,12 +15,20 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly rbacService: RbacService,
     private readonly jwtService: JwtService,
+    private readonly logsService: LogsService,
   ) {}
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, ip?: string) {
     const user = await this.usersService.findByPhone(loginDto.phone);
 
     if (!user || !(await compare(loginDto.password, user.password))) {
+      await this.logLoginFailure(
+        loginDto.phone,
+        '/auth/login',
+        '用户登录失败',
+        '手机号或密码错误',
+        ip,
+      );
       throw new UnauthorizedException('手机号或密码错误');
     }
 
@@ -27,10 +37,17 @@ export class AuthService {
     return this.buildLoginResult(user);
   }
 
-  async adminLogin(loginDto: LoginDto) {
+  async adminLogin(loginDto: LoginDto, ip?: string) {
     const user = await this.usersService.findByPhone(loginDto.phone);
 
     if (!user || !(await compare(loginDto.password, user.password))) {
+      await this.logLoginFailure(
+        loginDto.phone,
+        '/auth/admin/login',
+        '管理员登录失败',
+        '管理员账号或密码错误',
+        ip,
+      );
       throw new UnauthorizedException('管理员账号或密码错误');
     }
 
@@ -58,5 +75,31 @@ export class AuthService {
       user: this.usersService.toSafeUser(user),
       permissions,
     };
+  }
+
+  private async logLoginFailure(
+    phone: string,
+    path: string,
+    action: string,
+    errorMessage: string,
+    ip?: string,
+  ) {
+    await this.logsService.createOperationLog({
+      operatorPhone: phone,
+      module: '认证管理',
+      action,
+      type: OperationLogType.DANGEROUS,
+      method: 'POST',
+      path,
+      ip,
+      requestData: JSON.stringify({
+        body: {
+          phone,
+        },
+      }),
+      isSuccess: false,
+      errorMessage,
+      duration: 0,
+    });
   }
 }
