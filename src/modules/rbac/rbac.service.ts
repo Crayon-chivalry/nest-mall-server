@@ -359,21 +359,18 @@ export class RbacService {
       where: { code: 'system_banner' },
     });
 
-    const permissionMap = new Map(
-      (role.permissions ?? []).map((permission) => [permission.id, permission]),
-    );
-
-    for (const permission of permissions) {
-      permissionMap.set(permission.id, permission);
-    }
-
-    role.permissions = [...permissionMap.values()];
-
     if (bannerMenu) {
       const menuMap = new Map((role.menus ?? []).map((menu) => [menu.id, menu]));
       menuMap.set(bannerMenu.id, bannerMenu);
       role.menus = [...menuMap.values()];
     }
+
+    const currentMenus = role.menus ?? [];
+    const menuPermissions = await this.getOrCreatePermissionsForMenus(currentMenus);
+    role.permissions = this.mergeManualAndMenuPermissions(
+      role.permissions ?? [],
+      menuPermissions,
+    );
 
     await this.rolesRepository.save(role);
 
@@ -407,13 +404,16 @@ export class RbacService {
 
     const menu = this.menusRepository.create({
       ...createMenuDto,
+      permissionCode: this.normalizePermissionCode(createMenuDto.permissionCode),
       parentId: createMenuDto.parentId ?? null,
       sort: createMenuDto.sort ?? 0,
       isVisible: createMenuDto.isVisible ?? true,
       isEnabled: createMenuDto.isEnabled ?? true,
     });
 
-    return this.menusRepository.save(menu);
+    const savedMenu = await this.menusRepository.save(menu);
+    await this.ensurePermissionExistsForMenu(savedMenu);
+    return savedMenu;
   }
 
   async updateMenu(menuId: number, updateMenuDto: UpdateMenuDto) {
@@ -451,12 +451,20 @@ export class RbacService {
       }
     }
 
-    Object.assign(menu, updateMenuDto);
+    Object.assign(menu, {
+      ...updateMenuDto,
+      permissionCode:
+        updateMenuDto.permissionCode !== undefined
+          ? this.normalizePermissionCode(updateMenuDto.permissionCode)
+          : menu.permissionCode,
+    });
     if (updateMenuDto.parentId !== undefined) {
       menu.parentId = updateMenuDto.parentId ?? null;
     }
 
-    return this.menusRepository.save(menu);
+    const savedMenu = await this.menusRepository.save(menu);
+    await this.ensurePermissionExistsForMenu(savedMenu);
+    return savedMenu;
   }
 
   async deleteMenu(menuId: number) {
@@ -561,6 +569,7 @@ export class RbacService {
       where: { id: roleId },
       relations: {
         menus: true,
+        permissions: true,
       },
     });
 
@@ -568,13 +577,20 @@ export class RbacService {
       throw new NotFoundException('角色不存在');
     }
 
-    const menus = assignRoleMenusDto.menuIds.length
+    const selectedMenus = assignRoleMenusDto.menuIds.length
       ? await this.menusRepository.find({
           where: { id: In(assignRoleMenusDto.menuIds) },
         })
       : [];
 
+    const menus = await this.expandMenusWithAncestors(selectedMenus);
+    const menuPermissions = await this.getOrCreatePermissionsForMenus(menus);
+
     role.menus = menus;
+    role.permissions = this.mergeManualAndMenuPermissions(
+      role.permissions ?? [],
+      menuPermissions,
+    );
     return this.rolesRepository.save(role);
   }
 
@@ -658,6 +674,7 @@ export class RbacService {
     for (const menu of menus) {
       menuMap.set(menu.id, {
         id: menu.id,
+        parentId: menu.parentId,
         name: menu.name,
         code: menu.code,
         type: menu.type,
@@ -690,5 +707,107 @@ export class RbacService {
 
   private buildRouteTree(menus: Menu[]): RouteTreeNode[] {
     return this.buildMenuTree(menus);
+  }
+
+  private normalizePermissionCode(permissionCode?: string | null) {
+    const normalized = permissionCode?.trim();
+    return normalized ? normalized : undefined;
+  }
+
+  private shouldSyncMenuPermission(menu: Pick<Menu, 'type' | 'permissionCode'>) {
+    if (!menu.permissionCode) {
+      return false;
+    }
+
+    return menu.type === MenuType.MENU || menu.type === MenuType.ACTION;
+  }
+
+  private async ensurePermissionExistsForMenu(menu: Menu) {
+    if (!this.shouldSyncMenuPermission(menu)) {
+      return null;
+    }
+
+    const existing = await this.permissionsRepository.findOne({
+      where: { code: menu.permissionCode },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.permissionsRepository.save(
+      this.permissionsRepository.create({
+        code: menu.permissionCode,
+        name: `${menu.name} permission`,
+        description: `Auto-created from menu: ${menu.name}`,
+        isEnabled: true,
+      }),
+    );
+  }
+
+  private async getOrCreatePermissionsForMenus(menus: Menu[]) {
+    const permissions: Permission[] = [];
+
+    for (const menu of menus) {
+      const permission = await this.ensurePermissionExistsForMenu(menu);
+      if (permission) {
+        permissions.push(permission);
+      }
+    }
+
+    return permissions;
+  }
+
+  private async expandMenusWithAncestors(selectedMenus: Menu[]) {
+    if (selectedMenus.length === 0) {
+      return [];
+    }
+
+    const allMenus = await this.menusRepository.find({
+      order: {
+        sort: 'ASC',
+        id: 'ASC',
+      },
+    });
+    const allMenuMap = new Map(allMenus.map((menu) => [menu.id, menu]));
+    const selectedMenuMap = new Map<number, Menu>();
+
+    for (const menu of selectedMenus) {
+      let current: Menu | undefined = menu;
+
+      while (current) {
+        selectedMenuMap.set(current.id, current);
+
+        if (!current.parentId) {
+          break;
+        }
+
+        current = allMenuMap.get(current.parentId);
+      }
+    }
+
+    return allMenus.filter((menu) => selectedMenuMap.has(menu.id));
+  }
+
+  private mergeManualAndMenuPermissions(
+    existingPermissions: Permission[],
+    menuPermissions: Permission[],
+  ) {
+    const menuPermissionCodes = new Set(menuPermissions.map((item) => item.code));
+    const retainedManualPermissions = existingPermissions.filter(
+      (permission) => !menuPermissionCodes.has(permission.code),
+    );
+
+    const permissionMap = new Map<number, Permission>();
+
+    for (const permission of retainedManualPermissions) {
+      permissionMap.set(permission.id, permission);
+    }
+
+    for (const permission of menuPermissions) {
+      permissionMap.set(permission.id, permission);
+    }
+
+    return [...permissionMap.values()];
   }
 }

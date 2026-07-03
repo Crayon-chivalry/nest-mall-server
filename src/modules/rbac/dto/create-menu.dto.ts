@@ -25,7 +25,7 @@ export class CreateMenuDto {
   @ApiProperty({
     enum: MenuType,
     example: MenuType.MENU,
-    description: '菜单类型：1 目录，2 菜单，3 按钮',
+    description: '菜单类型：1 目录，2 菜单，3 操作项',
   })
   @Type(() => Number)
   @IsEnum(MenuType, { message: '菜单类型不正确' })

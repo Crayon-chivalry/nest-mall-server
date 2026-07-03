@@ -27,7 +27,7 @@ export class UpdateMenuDto {
   @ApiPropertyOptional({
     enum: MenuType,
     example: MenuType.MENU,
-    description: '菜单类型：1 目录，2 菜单，3 按钮',
+    description: '菜单类型：1 目录，2 菜单，3 操作项',
   })
   @IsOptional()
   @Type(() => Number)

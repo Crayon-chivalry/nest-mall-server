@@ -1,5 +1,6 @@
 export interface RouteTreeNode {
   id: number;
+  parentId: number | null;
   name: string;
   code: string;
   type: number;
