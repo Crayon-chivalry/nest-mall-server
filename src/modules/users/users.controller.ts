@@ -21,6 +21,7 @@ import { OperationLog } from 'src/common/decorators/operation-log.decorator';
 import { RequirePermissions } from 'src/common/decorators/require-permissions.decorator';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
 import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
+import { UserRole } from 'src/common/enums/user-role.enum';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateAdminDto } from './dto/create-admin.dto';
@@ -81,6 +82,13 @@ export class UsersController {
     required: false,
     example: 1,
     description: '状态筛选：1 正常，2 冻结',
+  })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    enum: UserRole,
+    example: UserRole.CUSTOMER,
+    description: '角色筛选：customer 普通用户，admin 管理员',
   })
   @Get()
   findAll(@Query() queryUsersDto: QueryUsersDto) {

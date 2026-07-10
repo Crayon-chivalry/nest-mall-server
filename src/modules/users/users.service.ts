@@ -5,6 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hash } from 'bcryptjs';
+import {
+  BUILTIN_ADMIN_ACCOUNT,
+  BUILTIN_ADMIN_NICKNAME,
+} from 'src/common/constants/builtin-admin.constants';
 import { UserRole } from 'src/common/enums/user-role.enum';
 import { UserStatus } from 'src/common/enums/user-status.enum';
 import {
@@ -35,6 +39,7 @@ export class UsersService {
 
     const user = this.usersRepository.create({
       ...createUserDto,
+      account: null,
       password: await this.hashPassword(createUserDto.password),
       payPassword: createUserDto.payPassword
         ? await this.hashPassword(createUserDto.payPassword)
@@ -49,20 +54,71 @@ export class UsersService {
   }
 
   async createAdmin(createAdminDto: CreateAdminDto) {
-    await this.ensurePhoneUnique(createAdminDto.phone);
+    await this.ensureAccountUnique(createAdminDto.account);
 
     const admin = this.usersRepository.create({
-      phone: createAdminDto.phone,
+      phone: null,
+      account: createAdminDto.account,
       password: await this.hashPassword(createAdminDto.password),
       nickname: createAdminDto.nickname,
       avatar: createAdminDto.avatar,
       userId: await this.generateUserId(),
-      status: UserStatus.NORMAL,
+      status: createAdminDto.status ?? UserStatus.NORMAL,
       role: UserRole.ADMIN,
     });
 
     const savedAdmin = await this.usersRepository.save(admin);
     return this.toSafeUser(savedAdmin);
+  }
+
+  async ensureBuiltinAdmin(options: {
+    account: string;
+    password: string;
+    nickname?: string;
+  }) {
+    let admin = await this.usersRepository.findOne({
+      where: { account: options.account },
+      relations: {
+        adminRoles: true,
+      },
+    });
+
+    if (!admin) {
+      admin = await this.usersRepository.save(
+        this.usersRepository.create({
+          phone: null,
+          account: options.account,
+          password: await this.hashPassword(options.password),
+          nickname: options.nickname ?? BUILTIN_ADMIN_NICKNAME,
+          userId: await this.generateUserId(),
+          status: UserStatus.NORMAL,
+          role: UserRole.ADMIN,
+        }),
+      );
+    } else {
+      let changed = false;
+
+      if (admin.role !== UserRole.ADMIN) {
+        admin.role = UserRole.ADMIN;
+        changed = true;
+      }
+
+      if (admin.status !== UserStatus.NORMAL) {
+        admin.status = UserStatus.NORMAL;
+        changed = true;
+      }
+
+      if (!admin.nickname && options.nickname) {
+        admin.nickname = options.nickname;
+        changed = true;
+      }
+
+      if (changed) {
+        admin = await this.usersRepository.save(admin);
+      }
+    }
+
+    return this.toSafeUser(admin);
   }
 
   async findAll(queryUsersDto: QueryUsersDto) {
@@ -85,8 +141,15 @@ export class UsersService {
       where.status = queryUsersDto.status;
     }
 
+    if (queryUsersDto.role) {
+      where.role = queryUsersDto.role;
+    }
+
     const [users, total] = await this.usersRepository.findAndCount({
       where,
+      relations: {
+        adminRoles: true,
+      },
       order: {
         id: 'DESC',
       },
@@ -108,6 +171,10 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { phone } });
   }
 
+  findByAccount(account: string) {
+    return this.usersRepository.findOne({ where: { account } });
+  }
+
   async findProfile(id: number) {
     const user = await this.usersRepository.findOne({ where: { id } });
 
@@ -121,6 +188,9 @@ export class UsersService {
   async findOneByUserId(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { userId },
+      relations: {
+        adminRoles: true,
+      },
     });
 
     if (!user) {
@@ -136,8 +206,12 @@ export class UsersService {
       where: {
         userId: In(userIds),
       },
-      select: ['id', 'userId'],
+      select: ['id', 'userId', 'account'],
     });
+
+    if (users.some((user) => user.account === BUILTIN_ADMIN_ACCOUNT)) {
+      throw new BadRequestException('Builtin admin account cannot be deleted');
+    }
 
     if (users.length !== userIds.length) {
       const foundUserIds = new Set(users.map((user) => user.userId));
@@ -165,12 +239,25 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    const isBuiltinAdmin = user.account === BUILTIN_ADMIN_ACCOUNT;
+
     if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
       await this.ensurePhoneUnique(updateUserDto.phone);
     }
 
+    if (updateUserDto.account && updateUserDto.account !== user.account) {
+      if (isBuiltinAdmin) {
+        throw new BadRequestException('Builtin admin account cannot be renamed');
+      }
+      await this.ensureAccountUnique(updateUserDto.account);
+    }
+
     if (updateUserDto.phone !== undefined) {
       user.phone = updateUserDto.phone;
+    }
+
+    if (updateUserDto.account !== undefined) {
+      user.account = updateUserDto.account;
     }
 
     if (updateUserDto.nickname !== undefined) {
@@ -182,6 +269,9 @@ export class UsersService {
     }
 
     if (updateUserDto.status !== undefined) {
+      if (isBuiltinAdmin && updateUserDto.status !== UserStatus.NORMAL) {
+        throw new BadRequestException('Builtin admin account cannot be disabled');
+      }
       user.status = updateUserDto.status;
     }
 
@@ -229,6 +319,16 @@ export class UsersService {
 
     if (existingUser) {
       throw new BadRequestException('Phone already exists');
+    }
+  }
+
+  private async ensureAccountUnique(account: string) {
+    const existingUser = await this.usersRepository.findOne({
+      where: { account },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Account already exists');
     }
   }
 

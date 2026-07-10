@@ -5,6 +5,7 @@ export interface RequestUser {
   userId: string;
   nickname: string;
   phone: string;
+  account?: string;
   role: UserRole;
   permissions: string[];
 }

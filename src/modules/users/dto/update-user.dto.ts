@@ -16,6 +16,18 @@ export class UpdateUserDto {
   @Matches(/^1\d{10}$/, { message: '手机号格式不正确' })
   phone?: string;
 
+  @ApiPropertyOptional({
+    example: 'admin01',
+    description: '管理员账号，支持字母、数字和下划线',
+  })
+  @IsOptional()
+  @IsString({ message: '管理员账号必须为字符串' })
+  @Length(3, 20, { message: '管理员账号长度必须在 3 到 20 个字符之间' })
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: '管理员账号只能包含字母、数字和下划线',
+  })
+  account?: string;
+
   @ApiPropertyOptional({ example: '李四', description: '昵称' })
   @IsOptional()
   @IsString({ message: '昵称必须为字符串' })
@@ -24,7 +36,7 @@ export class UpdateUserDto {
 
   @ApiPropertyOptional({
     example: 'http://localhost:3000/uploads/images/new-avatar.jpg',
-    description: '头像地址，请先调用公共图片上传接口，再回填返回的 url',
+    description: '头像地址，请先上传图片后再回填返回的 url',
   })
   @IsOptional()
   @IsUrl({ require_tld: false }, { message: '头像地址格式不正确' })

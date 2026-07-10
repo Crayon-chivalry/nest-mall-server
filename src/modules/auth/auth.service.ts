@@ -6,6 +6,7 @@ import { LogsService } from '../logs/logs.service';
 import { RbacService } from '../rbac/rbac.service';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
@@ -37,12 +38,12 @@ export class AuthService {
     return this.buildLoginResult(user);
   }
 
-  async adminLogin(loginDto: LoginDto, ip?: string) {
-    const user = await this.usersService.findByPhone(loginDto.phone);
+  async adminLogin(loginDto: AdminLoginDto, ip?: string) {
+    const user = await this.usersService.findByAccount(loginDto.account);
 
     if (!user || !(await compare(loginDto.password, user.password))) {
       await this.logLoginFailure(
-        loginDto.phone,
+        loginDto.account,
         '/auth/admin/login',
         '管理员登录失败',
         '管理员账号或密码错误',
@@ -64,7 +65,8 @@ export class AuthService {
       sub: user.id,
       userId: user.userId,
       nickname: user.nickname,
-      phone: user.phone,
+      phone: user.phone ?? user.account ?? user.userId,
+      account: user.account ?? undefined,
       role: user.role,
       permissions,
     };
@@ -78,14 +80,14 @@ export class AuthService {
   }
 
   private async logLoginFailure(
-    phone: string,
+    identifier: string,
     path: string,
     action: string,
     errorMessage: string,
     ip?: string,
   ) {
     await this.logsService.createOperationLog({
-      operatorPhone: phone,
+      operatorPhone: identifier,
       module: '认证管理',
       action,
       type: OperationLogType.DANGEROUS,
@@ -94,7 +96,7 @@ export class AuthService {
       ip,
       requestData: JSON.stringify({
         body: {
-          phone,
+          identifier,
         },
       }),
       isSuccess: false,

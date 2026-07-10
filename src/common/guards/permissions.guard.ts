@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
+import { BUILTIN_ADMIN_ACCOUNT } from 'src/common/constants/builtin-admin.constants';
 import { UserRole } from 'src/common/enums/user-role.enum';
 import { RequestUser } from 'src/modules/auth/interfaces/request-user.interface';
 import { PERMISSIONS_KEY } from '../constants/rbac.constants';
@@ -35,8 +36,10 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('当前用户未登录');
     }
 
-    // Bootstrap fallback:
-    // allow admin users with no assigned permissions yet to initialize RBAC.
+    if (user.account === BUILTIN_ADMIN_ACCOUNT) {
+      return true;
+    }
+
     if (
       user.role === UserRole.ADMIN &&
       (!user.permissions || user.permissions.length === 0)

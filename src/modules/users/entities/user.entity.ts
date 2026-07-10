@@ -18,8 +18,11 @@ export class User extends AppBaseEntity {
   @Column({ unique: true, length: 32 })
   userId!: string;
 
-  @Column({ unique: true, length: 20 })
-  phone!: string;
+  @Column({ type: 'varchar', unique: true, length: 20, nullable: true })
+  phone!: string | null;
+
+  @Column({ type: 'varchar', unique: true, length: 20, nullable: true })
+  account!: string | null;
 
   @Column({ length: 100 })
   password!: string;

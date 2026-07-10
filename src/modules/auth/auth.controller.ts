@@ -6,12 +6,13 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
 import { getRequestIp } from 'src/common/utils/request-ip.util';
-import { Request } from 'express';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { AdminLoginDto } from './dto/admin-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RequestUser } from './interfaces/request-user.interface';
@@ -26,7 +27,7 @@ export class AuthController {
 
   @ApiOperation({ summary: '用户登录并获取 JWT' })
   @ApiBody({ type: LoginDto })
-  @ApiUnauthorizedResponse({ description: '手机号码或密码错误' })
+  @ApiUnauthorizedResponse({ description: '手机号或密码错误' })
   @SuccessMessage('登录成功')
   @Post('login')
   login(@Body() loginDto: LoginDto, @Req() request: Request) {
@@ -34,11 +35,11 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: '管理员后台登录并获取 JWT' })
-  @ApiBody({ type: LoginDto })
+  @ApiBody({ type: AdminLoginDto })
   @ApiUnauthorizedResponse({ description: '管理员账号或密码错误' })
   @SuccessMessage('登录成功')
   @Post('admin/login')
-  adminLogin(@Body() loginDto: LoginDto, @Req() request: Request) {
+  adminLogin(@Body() loginDto: AdminLoginDto, @Req() request: Request) {
     return this.authService.adminLogin(loginDto, getRequestIp(request));
   }
 

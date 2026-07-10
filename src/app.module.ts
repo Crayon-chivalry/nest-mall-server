@@ -13,6 +13,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { RbacModule } from './modules/rbac/rbac.module';
 import { LogsModule } from './modules/logs/logs.module';
 import { BannersModule } from './modules/banners/banners.module';
+import { HomeEntriesModule } from './modules/home-entries/home-entries.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -75,6 +76,7 @@ async function buildTypeOrmOptions(
     CategoriesModule,
     ProductsModule,
     BannersModule,
+    HomeEntriesModule,
     UploadsModule,
     CartsModule,
     OrdersModule,

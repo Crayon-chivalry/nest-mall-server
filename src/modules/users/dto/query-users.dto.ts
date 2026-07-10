@@ -8,6 +8,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { UserRole } from 'src/common/enums/user-role.enum';
 import { UserStatus } from 'src/common/enums/user-status.enum';
 
 export class QueryUsersDto {
@@ -27,7 +28,10 @@ export class QueryUsersDto {
   @Max(100, { message: '每页条数不能大于 100' })
   pageSize?: number = 10;
 
-  @ApiPropertyOptional({ example: '13900139000', description: '按手机号筛选' })
+  @ApiPropertyOptional({
+    example: '13900139000',
+    description: '按手机号筛选',
+  })
   @IsOptional()
   @Matches(/^1\d{10}$/, { message: '手机号格式不正确' })
   phone?: string;
@@ -46,4 +50,13 @@ export class QueryUsersDto {
   @Type(() => Number)
   @IsEnum(UserStatus, { message: '用户状态不正确' })
   status?: UserStatus;
+
+  @ApiPropertyOptional({
+    enum: UserRole,
+    example: UserRole.CUSTOMER,
+    description: '按角色筛选：customer 普通用户，admin 管理员',
+  })
+  @IsOptional()
+  @IsEnum(UserRole, { message: '用户角色不正确' })
+  role?: UserRole;
 }

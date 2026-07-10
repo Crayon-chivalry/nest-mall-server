@@ -4,6 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import {
+  BUILTIN_ADMIN_ACCOUNT,
+  BUILTIN_SUPER_ROLE_CODE,
+  BUILTIN_SUPER_ROLE_NAME,
+} from 'src/common/constants/builtin-admin.constants';
 import { MenuType } from 'src/common/enums/menu-type.enum';
 import { UserRole } from 'src/common/enums/user-role.enum';
 import { User } from 'src/modules/users/entities/user.entity';
@@ -40,34 +45,44 @@ export class RbacService {
     });
 
     if (existing) {
-      throw new BadRequestException('权限编码已存在');
+      throw new BadRequestException('Permission code already exists');
     }
 
     const permission = this.permissionsRepository.create(createPermissionDto);
-    return this.permissionsRepository.save(permission);
+    const savedPermission = await this.permissionsRepository.save(permission);
+    await this.refreshBuiltinAdminAccess();
+    return savedPermission;
   }
 
-  async updatePermission(permissionId: number, updatePermissionDto: UpdatePermissionDto) {
+  async updatePermission(
+    permissionId: number,
+    updatePermissionDto: UpdatePermissionDto,
+  ) {
     const permission = await this.permissionsRepository.findOne({
       where: { id: permissionId },
     });
 
     if (!permission) {
-      throw new NotFoundException('权限不存在');
+      throw new NotFoundException('Permission not found');
     }
 
-    if (updatePermissionDto.code && updatePermissionDto.code !== permission.code) {
+    if (
+      updatePermissionDto.code &&
+      updatePermissionDto.code !== permission.code
+    ) {
       const existing = await this.permissionsRepository.findOne({
         where: { code: updatePermissionDto.code },
       });
 
       if (existing) {
-        throw new BadRequestException('权限编码已存在');
+        throw new BadRequestException('Permission code already exists');
       }
     }
 
     Object.assign(permission, updatePermissionDto);
-    return this.permissionsRepository.save(permission);
+    const savedPermission = await this.permissionsRepository.save(permission);
+    await this.refreshBuiltinAdminAccess();
+    return savedPermission;
   }
 
   async deletePermission(permissionId: number) {
@@ -79,7 +94,7 @@ export class RbacService {
     });
 
     if (!permission) {
-      throw new NotFoundException('权限不存在');
+      throw new NotFoundException('Permission not found');
     }
 
     if (permission.roles?.length) {
@@ -102,6 +117,7 @@ export class RbacService {
     }
 
     await this.permissionsRepository.remove(permission);
+    await this.refreshBuiltinAdminAccess();
 
     return {
       id: permissionId,
@@ -214,13 +230,112 @@ export class RbacService {
     };
   }
 
+  async initializeHomeEntryManagementResources() {
+    const permissionConfigs = [
+      {
+        code: 'home.entry.create',
+        name: '创建金刚区入口',
+        description: '用于创建首页金刚区入口',
+      },
+      {
+        code: 'home.entry.view',
+        name: '查看金刚区入口',
+        description: '用于查看首页金刚区入口列表和详情',
+      },
+      {
+        code: 'home.entry.update',
+        name: '修改金刚区入口',
+        description: '用于修改首页金刚区入口信息',
+      },
+      {
+        code: 'home.entry.status.update',
+        name: '修改金刚区入口状态',
+        description: '用于启用或停用首页金刚区入口',
+      },
+      {
+        code: 'home.entry.delete',
+        name: '删除金刚区入口',
+        description: '用于删除首页金刚区入口',
+      },
+    ];
+
+    const permissions: Permission[] = [];
+
+    for (const config of permissionConfigs) {
+      let permission = await this.permissionsRepository.findOne({
+        where: { code: config.code },
+      });
+
+      if (!permission) {
+        permission = await this.permissionsRepository.save(
+          this.permissionsRepository.create({
+            ...config,
+            isEnabled: true,
+          }),
+        );
+      }
+
+      permissions.push(permission);
+    }
+
+    let contentMenu = await this.menusRepository.findOne({
+      where: { code: 'content' },
+    });
+
+    if (!contentMenu) {
+      contentMenu = await this.menusRepository.save(
+        this.menusRepository.create({
+          name: '内容管理',
+          code: 'content',
+          type: MenuType.DIRECTORY,
+          parentId: null,
+          path: '/content',
+          component: 'Layout',
+          icon: 'Appstore',
+          sort: 2,
+          isVisible: true,
+          isEnabled: true,
+        }),
+      );
+    }
+
+    let homeEntryMenu = await this.menusRepository.findOne({
+      where: { code: 'content_home_entry' },
+    });
+
+    if (!homeEntryMenu) {
+      homeEntryMenu = await this.menusRepository.save(
+        this.menusRepository.create({
+          name: '金刚区入口',
+          code: 'content_home_entry',
+          type: MenuType.MENU,
+          parentId: contentMenu.id,
+          path: 'home-entries',
+          component: 'content/home-entries/index',
+          icon: 'AppstoreAdd',
+          permissionCode: 'home.entry.view',
+          sort: 10,
+          isVisible: true,
+          isEnabled: true,
+        }),
+      );
+    }
+
+    await this.refreshBuiltinAdminAccess();
+
+    return {
+      permissions,
+      menus: [contentMenu, homeEntryMenu],
+    };
+  }
+
   async createRole(createRoleDto: CreateRoleDto) {
     const existing = await this.rolesRepository.findOne({
       where: { code: createRoleDto.code },
     });
 
     if (existing) {
-      throw new BadRequestException('角色编码已存在');
+      throw new BadRequestException('Role code already exists');
     }
 
     const permissions = createRoleDto.permissionIds?.length
@@ -250,7 +365,11 @@ export class RbacService {
     });
 
     if (!role) {
-      throw new NotFoundException('角色不存在');
+      throw new NotFoundException('Role not found');
+    }
+
+    if (role.code === BUILTIN_SUPER_ROLE_CODE) {
+      throw new BadRequestException('Builtin super admin role cannot be edited');
     }
 
     if (updateRoleDto.code && updateRoleDto.code !== role.code) {
@@ -259,7 +378,7 @@ export class RbacService {
       });
 
       if (existing) {
-        throw new BadRequestException('角色编码已存在');
+        throw new BadRequestException('Role code already exists');
       }
     }
 
@@ -301,7 +420,11 @@ export class RbacService {
     });
 
     if (!role) {
-      throw new NotFoundException('角色不存在');
+      throw new NotFoundException('Role not found');
+    }
+
+    if (role.code === BUILTIN_SUPER_ROLE_CODE) {
+      throw new BadRequestException('Builtin super admin role cannot be deleted');
     }
 
     role.permissions = [];
@@ -338,22 +461,14 @@ export class RbacService {
     });
 
     if (!role) {
-      throw new NotFoundException('角色不存在');
+      throw new NotFoundException('Role not found');
+    }
+
+    if (role.code === BUILTIN_SUPER_ROLE_CODE) {
+      throw new BadRequestException('Builtin super admin role is managed automatically');
     }
 
     await this.initializeBannerManagementResources();
-
-    const permissions = await this.permissionsRepository.find({
-      where: {
-        code: In([
-          'banner.create',
-          'banner.view',
-          'banner.update',
-          'banner.status.update',
-          'banner.delete',
-        ]),
-      },
-    });
 
     const bannerMenu = await this.menusRepository.findOne({
       where: { code: 'system_banner' },
@@ -389,7 +504,7 @@ export class RbacService {
     });
 
     if (existing) {
-      throw new BadRequestException('菜单编码已存在');
+      throw new BadRequestException('Menu code already exists');
     }
 
     if (createMenuDto.parentId) {
@@ -398,7 +513,7 @@ export class RbacService {
       });
 
       if (!parent) {
-        throw new BadRequestException('父级菜单不存在');
+        throw new BadRequestException('Parent menu not found');
       }
     }
 
@@ -413,6 +528,7 @@ export class RbacService {
 
     const savedMenu = await this.menusRepository.save(menu);
     await this.ensurePermissionExistsForMenu(savedMenu);
+    await this.refreshBuiltinAdminAccess();
     return savedMenu;
   }
 
@@ -422,7 +538,7 @@ export class RbacService {
     });
 
     if (!menu) {
-      throw new NotFoundException('菜单不存在');
+      throw new NotFoundException('Menu not found');
     }
 
     if (updateMenuDto.code && updateMenuDto.code !== menu.code) {
@@ -431,13 +547,13 @@ export class RbacService {
       });
 
       if (existing) {
-        throw new BadRequestException('菜单编码已存在');
+        throw new BadRequestException('Menu code already exists');
       }
     }
 
     if (updateMenuDto.parentId !== undefined) {
       if (updateMenuDto.parentId === menu.id) {
-        throw new BadRequestException('父级菜单不能选择自己');
+        throw new BadRequestException('Parent menu cannot be itself');
       }
 
       if (updateMenuDto.parentId !== null) {
@@ -446,7 +562,7 @@ export class RbacService {
         });
 
         if (!parent) {
-          throw new BadRequestException('父级菜单不存在');
+          throw new BadRequestException('Parent menu not found');
         }
       }
     }
@@ -464,6 +580,7 @@ export class RbacService {
 
     const savedMenu = await this.menusRepository.save(menu);
     await this.ensurePermissionExistsForMenu(savedMenu);
+    await this.refreshBuiltinAdminAccess();
     return savedMenu;
   }
 
@@ -476,7 +593,7 @@ export class RbacService {
     });
 
     if (!menu) {
-      throw new NotFoundException('菜单不存在');
+      throw new NotFoundException('Menu not found');
     }
 
     const childrenCount = await this.menusRepository.count({
@@ -484,7 +601,7 @@ export class RbacService {
     });
 
     if (childrenCount > 0) {
-      throw new BadRequestException('当前菜单存在子菜单，不能删除');
+      throw new BadRequestException('Current menu has child menus and cannot be deleted');
     }
 
     if (menu.roles?.length) {
@@ -506,6 +623,7 @@ export class RbacService {
     }
 
     await this.menusRepository.remove(menu);
+    await this.refreshBuiltinAdminAccess();
 
     return {
       id: menuId,
@@ -533,11 +651,11 @@ export class RbacService {
     });
 
     if (!user) {
-      throw new NotFoundException('用户不存在');
+      throw new NotFoundException('User not found');
     }
 
     if (user.role !== UserRole.ADMIN) {
-      throw new BadRequestException('只有管理员用户才能分配后台角色');
+      throw new BadRequestException('Only admin users can be assigned backend roles');
     }
 
     const roles = assignUserRolesDto.roleIds.length
@@ -550,7 +668,15 @@ export class RbacService {
         })
       : [];
 
-    user.adminRoles = roles;
+    if (user.account === BUILTIN_ADMIN_ACCOUNT) {
+      const builtinRole = await this.ensureBuiltinSuperAdminRole();
+      const roleMap = new Map<number, AdminRole>(roles.map((role) => [role.id, role]));
+      roleMap.set(builtinRole.id, builtinRole);
+      user.adminRoles = [...roleMap.values()];
+    } else {
+      user.adminRoles = roles;
+    }
+
     const savedUser = await this.usersRepository.save(user);
 
     return this.usersRepository.findOne({
@@ -574,7 +700,11 @@ export class RbacService {
     });
 
     if (!role) {
-      throw new NotFoundException('角色不存在');
+      throw new NotFoundException('Role not found');
+    }
+
+    if (role.code === BUILTIN_SUPER_ROLE_CODE) {
+      throw new BadRequestException('Builtin super admin role is managed automatically');
     }
 
     const selectedMenus = assignRoleMenusDto.menuIds.length
@@ -608,6 +738,14 @@ export class RbacService {
       return [];
     }
 
+    if (user.account === BUILTIN_ADMIN_ACCOUNT) {
+      const permissions = await this.permissionsRepository.find({
+        where: { isEnabled: true },
+        order: { id: 'ASC' },
+      });
+      return permissions.map((permission) => permission.code);
+    }
+
     const permissionCodes = new Set<string>();
 
     for (const role of user.adminRoles ?? []) {
@@ -636,11 +774,26 @@ export class RbacService {
     });
 
     if (!user) {
-      throw new NotFoundException('用户不存在');
+      throw new NotFoundException('User not found');
     }
 
     if (user.role !== UserRole.ADMIN) {
-      throw new BadRequestException('当前用户不是管理员');
+      throw new BadRequestException('Current user is not an admin');
+    }
+
+    if (user.account === BUILTIN_ADMIN_ACCOUNT) {
+      const menus = await this.menusRepository.find({
+        where: {
+          isEnabled: true,
+          isVisible: true,
+        },
+        order: {
+          sort: 'ASC',
+          id: 'ASC',
+        },
+      });
+
+      return this.buildRouteTree(menus);
     }
 
     const menuMap = new Map<number, Menu>();
@@ -665,6 +818,31 @@ export class RbacService {
     });
 
     return this.buildRouteTree(menus);
+  }
+
+  async ensureBuiltinAdminAccess(userId: string) {
+    const user = await this.usersRepository.findOne({
+      where: { userId },
+      relations: {
+        adminRoles: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.account !== BUILTIN_ADMIN_ACCOUNT || user.role !== UserRole.ADMIN) {
+      throw new BadRequestException('Target user is not builtin admin');
+    }
+
+    const builtinRole = await this.ensureBuiltinSuperAdminRole();
+    const roleMap = new Map<number, AdminRole>(
+      (user.adminRoles ?? []).map((role) => [role.id, role]),
+    );
+    roleMap.set(builtinRole.id, builtinRole);
+    user.adminRoles = [...roleMap.values()];
+    await this.usersRepository.save(user);
   }
 
   private buildMenuTree(menus: Menu[]): RouteTreeNode[] {
@@ -809,5 +987,81 @@ export class RbacService {
     }
 
     return [...permissionMap.values()];
+  }
+
+  private async ensureBuiltinSuperAdminRole() {
+    let role = await this.rolesRepository.findOne({
+      where: { code: BUILTIN_SUPER_ROLE_CODE },
+      relations: {
+        permissions: true,
+        menus: true,
+      },
+    });
+
+    if (!role) {
+      role = await this.rolesRepository.save(
+        this.rolesRepository.create({
+          code: BUILTIN_SUPER_ROLE_CODE,
+          name: BUILTIN_SUPER_ROLE_NAME,
+          description: 'System builtin super administrator role',
+          isEnabled: true,
+          permissions: [],
+          menus: [],
+        }),
+      );
+    }
+
+    await this.syncBuiltinSuperAdminRole(role.id);
+
+    return (
+      (await this.rolesRepository.findOne({
+        where: { id: role.id },
+        relations: {
+          permissions: true,
+          menus: true,
+        },
+      })) ?? role
+    );
+  }
+
+  private async syncBuiltinSuperAdminRole(roleId: number) {
+    const role = await this.rolesRepository.findOne({
+      where: { id: roleId },
+      relations: {
+        permissions: true,
+        menus: true,
+      },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role not found');
+    }
+
+    const [permissions, menus] = await Promise.all([
+      this.permissionsRepository.find({
+        where: { isEnabled: true },
+        order: { id: 'ASC' },
+      }),
+      this.menusRepository.find({
+        where: { isEnabled: true },
+        order: { sort: 'ASC', id: 'ASC' },
+      }),
+    ]);
+
+    role.isEnabled = true;
+    role.permissions = permissions;
+    role.menus = menus;
+    await this.rolesRepository.save(role);
+  }
+
+  private async refreshBuiltinAdminAccess() {
+    const user = await this.usersRepository.findOne({
+      where: { account: BUILTIN_ADMIN_ACCOUNT },
+      select: ['id', 'userId'],
+    });
+
+    if (user) {
+      await this.ensureBuiltinAdminAccess(user.userId);
+    }
   }
 }
