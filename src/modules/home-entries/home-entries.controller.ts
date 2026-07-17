@@ -25,6 +25,7 @@ import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateHomeEntryDto } from './dto/create-home-entry.dto';
+import { DeleteHomeEntriesDto } from './dto/delete-home-entries.dto';
 import { QueryHomeEntriesDto } from './dto/query-home-entries.dto';
 import { UpdateHomeEntryStatusDto } from './dto/update-home-entry-status.dto';
 import { UpdateHomeEntryDto } from './dto/update-home-entry.dto';
@@ -132,14 +133,14 @@ export class HomeEntriesController {
   @RequirePermissions('home.entry.delete')
   @OperationLog({
     module: '金刚区入口管理',
-    action: '删除金刚区入口',
+    action: '批量删除金刚区入口',
     type: OperationLogType.DANGEROUS,
   })
-  @ApiOperation({ summary: '删除金刚区入口' })
-  @ApiParam({ name: 'id', description: '金刚区入口 ID', example: 1 })
+  @ApiOperation({ summary: '批量删除金刚区入口' })
+  @ApiBody({ type: DeleteHomeEntriesDto })
   @SuccessMessage('删除成功')
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.homeEntriesService.remove(id);
+  @Delete()
+  remove(@Body() deleteHomeEntriesDto: DeleteHomeEntriesDto) {
+    return this.homeEntriesService.remove(deleteHomeEntriesDto);
   }
 }

@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Like, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { CreateHomeEntryDto } from './dto/create-home-entry.dto';
+import { DeleteHomeEntriesDto } from './dto/delete-home-entries.dto';
 import { QueryHomeEntriesDto } from './dto/query-home-entries.dto';
 import { UpdateHomeEntryStatusDto } from './dto/update-home-entry-status.dto';
 import { UpdateHomeEntryDto } from './dto/update-home-entry.dto';
@@ -76,12 +77,28 @@ export class HomeEntriesService {
     return this.homeEntriesRepository.save(entry);
   }
 
-  async remove(id: number) {
-    const entry = await this.findHomeEntryOrFail(id);
-    await this.homeEntriesRepository.remove(entry);
+  async remove(deleteHomeEntriesDto: DeleteHomeEntriesDto) {
+    const ids = [...new Set(deleteHomeEntriesDto.ids)];
+    const entries = await this.homeEntriesRepository.find({
+      where: {
+        id: In(ids),
+      },
+      select: ['id'],
+    });
+
+    if (entries.length !== ids.length) {
+      const foundIds = new Set(entries.map((entry) => entry.id));
+      const missingIds = ids.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(
+        `Home entries not found: ${missingIds.join(', ')}`,
+      );
+    }
+
+    await this.homeEntriesRepository.remove(entries);
 
     return {
-      id,
+      ids,
+      deletedCount: entries.length,
       success: true,
     };
   }
