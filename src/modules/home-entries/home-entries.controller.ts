@@ -31,19 +31,13 @@ import { UpdateHomeEntryStatusDto } from './dto/update-home-entry-status.dto';
 import { UpdateHomeEntryDto } from './dto/update-home-entry.dto';
 import { HomeEntriesService } from './home-entries.service';
 
-@ApiTags('HomeEntries')
-@Controller('home-entries')
+@ApiTags('AdminHomeEntries')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller('admin/home-entries')
 export class HomeEntriesController {
   constructor(private readonly homeEntriesService: HomeEntriesService) {}
 
-  @ApiOperation({ summary: '获取前台启用中的金刚区入口列表' })
-  @Get('active/list')
-  findActiveList() {
-    return this.homeEntriesService.findActiveList();
-  }
-
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('home.entry.create')
   @OperationLog({ module: '金刚区入口管理', action: '创建金刚区入口' })
   @ApiOperation({ summary: '创建金刚区入口' })
@@ -54,8 +48,6 @@ export class HomeEntriesController {
     return this.homeEntriesService.create(createHomeEntryDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('home.entry.view')
   @ApiOperation({ summary: '分页获取金刚区入口列表' })
   @ApiQuery({ name: 'page', required: false, example: 1, description: '页码' })
@@ -82,8 +74,6 @@ export class HomeEntriesController {
     return this.homeEntriesService.findAll(queryDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('home.entry.view')
   @ApiOperation({ summary: '获取单个金刚区入口详情' })
   @ApiParam({ name: 'id', description: '金刚区入口 ID', example: 1 })
@@ -92,8 +82,6 @@ export class HomeEntriesController {
     return this.homeEntriesService.findOne(id);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('home.entry.update')
   @OperationLog({ module: '金刚区入口管理', action: '修改金刚区入口' })
   @ApiOperation({ summary: '修改金刚区入口' })
@@ -108,8 +96,6 @@ export class HomeEntriesController {
     return this.homeEntriesService.update(id, updateHomeEntryDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('home.entry.status.update')
   @OperationLog({
     module: '金刚区入口管理',
@@ -128,8 +114,6 @@ export class HomeEntriesController {
     return this.homeEntriesService.updateStatus(id, updateHomeEntryStatusDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('home.entry.delete')
   @OperationLog({
     module: '金刚区入口管理',

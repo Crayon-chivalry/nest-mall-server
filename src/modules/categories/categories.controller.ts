@@ -24,8 +24,8 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { QueryCategoriesDto } from './dto/query-categories.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
-@ApiTags('Categories')
-@Controller('categories')
+@ApiTags('AdminCategories')
+@Controller('admin/categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 

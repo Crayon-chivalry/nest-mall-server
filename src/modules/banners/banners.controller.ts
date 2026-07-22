@@ -30,19 +30,13 @@ import { QueryBannersDto } from './dto/query-banners.dto';
 import { UpdateBannerStatusDto } from './dto/update-banner-status.dto';
 import { UpdateBannerDto } from './dto/update-banner.dto';
 
-@ApiTags('Banners')
-@Controller('banners')
+@ApiTags('AdminBanners')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller('admin/banners')
 export class BannersController {
   constructor(private readonly bannersService: BannersService) {}
 
-  @ApiOperation({ summary: '获取前台启用中的轮播图列表' })
-  @Get('active/list')
-  findActiveList() {
-    return this.bannersService.findActiveList();
-  }
-
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.create')
   @OperationLog({ module: '轮播图管理', action: '创建轮播图' })
   @ApiOperation({ summary: '创建轮播图' })
@@ -53,8 +47,6 @@ export class BannersController {
     return this.bannersService.create(createBannerDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.view')
   @ApiOperation({ summary: '分页获取轮播图列表' })
   @ApiQuery({ name: 'page', required: false, example: 1, description: '页码' })
@@ -81,8 +73,6 @@ export class BannersController {
     return this.bannersService.findAll(queryDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.view')
   @ApiOperation({ summary: '获取单个轮播图详情' })
   @ApiParam({ name: 'id', description: '轮播图 ID', example: 1 })
@@ -91,8 +81,6 @@ export class BannersController {
     return this.bannersService.findOne(id);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.update')
   @OperationLog({ module: '轮播图管理', action: '修改轮播图' })
   @ApiOperation({ summary: '修改轮播图' })
@@ -107,8 +95,6 @@ export class BannersController {
     return this.bannersService.update(id, updateBannerDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.status.update')
   @OperationLog({
     module: '轮播图管理',
@@ -127,8 +113,6 @@ export class BannersController {
     return this.bannersService.updateStatus(id, updateBannerStatusDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('banner.delete')
   @OperationLog({
     module: '轮播图管理',

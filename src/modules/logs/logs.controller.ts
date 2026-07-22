@@ -12,10 +12,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { QueryAdminOperationLogsDto } from './dto/query-admin-operation-logs.dto';
 import { LogsService } from './logs.service';
 
-@ApiTags('Logs')
+@ApiTags('AdminLogs')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller('logs')
+@Controller('admin/logs')
 export class LogsController {
   constructor(private readonly logsService: LogsService) {}
 

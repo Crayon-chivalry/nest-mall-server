@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { LogsModule } from '../logs/logs.module';
 import { RbacModule } from '../rbac/rbac.module';
 import { UsersModule } from '../users/users.module';
+import { AppAuthController } from './app-auth.controller';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -41,7 +42,7 @@ function getJwtExpiresIn(configService: ConfigService): JwtExpiresIn {
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AppAuthController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService, JwtModule],
 })

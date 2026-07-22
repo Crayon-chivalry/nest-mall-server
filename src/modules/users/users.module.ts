@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RbacModule } from '../rbac/rbac.module';
+import { AppUsersController } from './app-users.controller';
 import { User } from './entities/user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([User]), RbacModule],
-  controllers: [UsersController],
+  controllers: [UsersController, AppUsersController],
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule],
 })

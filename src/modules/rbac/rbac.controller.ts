@@ -34,10 +34,10 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 import { RouteTreeNode } from './interfaces/route-tree-node.interface';
 import { RbacService } from './rbac.service';
 
-@ApiTags('RBAC')
+@ApiTags('AdminRBAC')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller('rbac')
+@Controller('admin/rbac')
 export class RbacController {
   constructor(private readonly rbacService: RbacService) {}
 

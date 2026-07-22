@@ -25,26 +25,19 @@ import { UserRole } from 'src/common/enums/user-role.enum';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { CreateUserDto } from './dto/create-user.dto';
 import { DeleteUsersDto } from './dto/delete-users.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
-@ApiTags('Users')
-@Controller('users')
+@ApiTags('AdminUsers')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller('admin/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @ApiOperation({ summary: '创建商城用户' })
-  @ApiBody({ type: CreateUserDto })
-  @OperationLog({ module: '用户管理', action: '创建用户' })
-  @SuccessMessage('创建成功')
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
-  }
-
+  @RequirePermissions('user.create')
   @OperationLog({ module: '用户管理', action: '创建管理员账号' })
   @ApiOperation({ summary: '创建管理员账号' })
   @ApiBody({ type: CreateAdminDto })
@@ -54,8 +47,6 @@ export class UsersController {
     return this.usersService.createAdmin(createAdminDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.view')
   @ApiOperation({ summary: '分页获取用户列表' })
   @ApiQuery({ name: 'page', required: false, example: 1, description: '页码' })
@@ -95,8 +86,6 @@ export class UsersController {
     return this.usersService.findAll(queryUsersDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.delete')
   @OperationLog({
     module: '用户管理',
@@ -111,8 +100,6 @@ export class UsersController {
     return this.usersService.remove(deleteUsersDto);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.view')
   @ApiOperation({ summary: '获取单个用户信息' })
   @ApiParam({
@@ -125,8 +112,6 @@ export class UsersController {
     return this.usersService.findOneByUserId(userId);
   }
 
-  @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('user.update')
   @OperationLog({ module: '用户管理', action: '修改用户信息' })
   @ApiOperation({ summary: '统一修改用户信息' })

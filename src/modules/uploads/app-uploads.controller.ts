@@ -74,12 +74,12 @@ function validateAndBuildImageResponse(
   return uploadsService.buildImageResponse(file, request);
 }
 
-@ApiTags('AdminUploads')
-@Controller('admin/uploads')
-export class UploadsController {
+@ApiTags('AppUploads')
+@Controller('app/uploads')
+export class AppUploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
-  @ApiOperation({ summary: '后台图片上传' })
+  @ApiOperation({ summary: '前台图片上传' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
