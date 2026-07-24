@@ -329,6 +329,105 @@ export class RbacService {
     };
   }
 
+  async initializePromoSectionManagementResources() {
+    const permissionConfigs = [
+      {
+        code: 'promo.section.create',
+        name: '创建首页广告位',
+        description: '用于创建首页广告位配置',
+      },
+      {
+        code: 'promo.section.view',
+        name: '查看首页广告位',
+        description: '用于查看首页广告位列表和详情',
+      },
+      {
+        code: 'promo.section.update',
+        name: '修改首页广告位',
+        description: '用于修改首页广告位信息',
+      },
+      {
+        code: 'promo.section.status.update',
+        name: '修改首页广告位状态',
+        description: '用于启用或停用首页广告位',
+      },
+      {
+        code: 'promo.section.delete',
+        name: '删除首页广告位',
+        description: '用于删除首页广告位',
+      },
+    ];
+
+    const permissions: Permission[] = [];
+
+    for (const config of permissionConfigs) {
+      let permission = await this.permissionsRepository.findOne({
+        where: { code: config.code },
+      });
+
+      if (!permission) {
+        permission = await this.permissionsRepository.save(
+          this.permissionsRepository.create({
+            ...config,
+            isEnabled: true,
+          }),
+        );
+      }
+
+      permissions.push(permission);
+    }
+
+    let contentMenu = await this.menusRepository.findOne({
+      where: { code: 'content' },
+    });
+
+    if (!contentMenu) {
+      contentMenu = await this.menusRepository.save(
+        this.menusRepository.create({
+          name: '内容管理',
+          code: 'content',
+          type: MenuType.DIRECTORY,
+          parentId: null,
+          path: '/content',
+          component: 'Layout',
+          icon: 'Appstore',
+          sort: 2,
+          isVisible: true,
+          isEnabled: true,
+        }),
+      );
+    }
+
+    let promoSectionMenu = await this.menusRepository.findOne({
+      where: { code: 'content_promo_section' },
+    });
+
+    if (!promoSectionMenu) {
+      promoSectionMenu = await this.menusRepository.save(
+        this.menusRepository.create({
+          name: '首页广告位',
+          code: 'content_promo_section',
+          type: MenuType.MENU,
+          parentId: contentMenu.id,
+          path: 'promo-sections',
+          component: 'content/promo-sections/index',
+          icon: 'PictureRounded',
+          permissionCode: 'promo.section.view',
+          sort: 20,
+          isVisible: true,
+          isEnabled: true,
+        }),
+      );
+    }
+
+    await this.refreshBuiltinAdminAccess();
+
+    return {
+      permissions,
+      menus: [contentMenu, promoSectionMenu],
+    };
+  }
+
   async createRole(createRoleDto: CreateRoleDto) {
     const existing = await this.rolesRepository.findOne({
       where: { code: createRoleDto.code },

@@ -35,6 +35,7 @@ export class AppService implements OnApplicationBootstrap {
 
     await this.rbacService.initializeBannerManagementResources();
     await this.rbacService.initializeHomeEntryManagementResources();
+    await this.rbacService.initializePromoSectionManagementResources();
     await this.rbacService.ensureBuiltinAdminAccess(adminUser.userId);
 
     this.logger.log(

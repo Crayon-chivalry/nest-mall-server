@@ -4,6 +4,7 @@ import { UserStatus } from 'src/common/enums/user-status.enum';
 import { AdminRole } from 'src/modules/rbac/entities/role.entity';
 import { Cart } from 'src/modules/carts/entities/cart.entity';
 import { Order } from 'src/modules/orders/entities/order.entity';
+import { ShippingAddress } from 'src/modules/shipping-addresses/entities/shipping-address.entity';
 import {
   Column,
   Entity,
@@ -68,4 +69,7 @@ export class User extends AppBaseEntity {
 
   @OneToMany(() => Order, (order) => order.user)
   orders!: Order[];
+
+  @OneToMany(() => ShippingAddress, (shippingAddress) => shippingAddress.user)
+  shippingAddresses!: ShippingAddress[];
 }

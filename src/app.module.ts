@@ -15,6 +15,8 @@ import { LogsModule } from './modules/logs/logs.module';
 import { BannersModule } from './modules/banners/banners.module';
 import { HomeEntriesModule } from './modules/home-entries/home-entries.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { ShippingAddressesModule } from './modules/shipping-addresses/shipping-addresses.module';
+import { PromoSectionsModule } from './modules/promo-sections/promo-sections.module';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { OperationLogInterceptor } from './common/interceptors/operation-log.interceptor';
@@ -80,6 +82,8 @@ async function buildTypeOrmOptions(
     UploadsModule,
     CartsModule,
     OrdersModule,
+    ShippingAddressesModule,
+    PromoSectionsModule,
   ],
   controllers: [AppController],
   providers: [
