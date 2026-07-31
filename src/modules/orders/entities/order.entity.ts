@@ -22,6 +22,27 @@ export class Order extends AppBaseEntity {
   @Column({ nullable: true, length: 255 })
   remark?: string;
 
+  @Column({ length: 20 })
+  receiverName!: string;
+
+  @Column({ length: 20 })
+  receiverPhone!: string;
+
+  @Column({ length: 50 })
+  province!: string;
+
+  @Column({ length: 50 })
+  city!: string;
+
+  @Column({ length: 50 })
+  district!: string;
+
+  @Column({ length: 255 })
+  detailAddress!: string;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  postalCode?: string | null;
+
   @ManyToOne(() => User, (user) => user.orders, {
     nullable: false,
     onDelete: 'RESTRICT',

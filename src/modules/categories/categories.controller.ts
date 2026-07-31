@@ -50,9 +50,19 @@ export class CategoriesController {
     return this.categoriesService.findAll(queryDto);
   }
 
-  @ApiOperation({ summary: '获取一级分类列表' })
+  @ApiOperation({ summary: '获取分类快捷列表' })
+  @ApiQuery({
+    name: 'level',
+    required: false,
+    example: 1,
+    description: '分类层级，1 为一级分类，2 为全部二级分类',
+  })
   @Get('parent/list')
-  findParentList() {
+  findParentList(@Query('level') level?: string) {
+    if (level === '2') {
+      return this.categoriesService.findChildList();
+    }
+
     return this.categoriesService.findParentList();
   }
 

@@ -26,6 +26,7 @@ import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { PermissionsGuard } from 'src/common/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreatePromoSectionDto } from './dto/create-promo-section.dto';
+import { DeletePromoSectionsDto } from './dto/delete-promo-sections.dto';
 import { QueryPromoSectionsDto } from './dto/query-promo-sections.dto';
 import { UpdatePromoSectionStatusDto } from './dto/update-promo-section-status.dto';
 import { UpdatePromoSectionDto } from './dto/update-promo-section.dto';
@@ -123,14 +124,14 @@ export class PromoSectionsController {
   @RequirePermissions('promo.section.delete')
   @OperationLog({
     module: '首页广告位管理',
-    action: '删除首页广告位',
+    action: '批量删除首页广告位',
     type: OperationLogType.DANGEROUS,
   })
-  @ApiOperation({ summary: '删除首页广告位' })
-  @ApiParam({ name: 'id', description: '首页广告位 ID', example: 1 })
+  @ApiOperation({ summary: '批量删除首页广告位' })
+  @ApiBody({ type: DeletePromoSectionsDto })
   @SuccessMessage('删除成功')
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.promoSectionsService.remove(id);
+  @Delete()
+  remove(@Body() deletePromoSectionsDto: DeletePromoSectionsDto) {
+    return this.promoSectionsService.remove(deletePromoSectionsDto);
   }
 }

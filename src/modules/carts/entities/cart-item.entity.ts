@@ -1,4 +1,5 @@
 import { AppBaseEntity } from 'src/common/entities/base.entity';
+import { ProductSku } from 'src/modules/products/entities/product-sku.entity';
 import { Product } from 'src/modules/products/entities/product.entity';
 import { Column, Entity, ManyToOne } from 'typeorm';
 import { Cart } from './cart.entity';
@@ -19,4 +20,10 @@ export class CartItem extends AppBaseEntity {
     onDelete: 'RESTRICT',
   })
   product!: Product;
+
+  @ManyToOne(() => ProductSku, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  sku?: ProductSku | null;
 }

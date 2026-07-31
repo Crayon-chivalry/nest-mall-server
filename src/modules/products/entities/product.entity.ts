@@ -3,6 +3,7 @@ import { Category } from 'src/modules/categories/entities/category.entity';
 import { CartItem } from 'src/modules/carts/entities/cart-item.entity';
 import { OrderItem } from 'src/modules/orders/entities/order-item.entity';
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
+import { ProductSku } from './product-sku.entity';
 
 @Entity('products')
 export class Product extends AppBaseEntity {
@@ -18,8 +19,14 @@ export class Product extends AppBaseEntity {
   @Column({ nullable: true, length: 255 })
   cover?: string;
 
+  @Column({ type: 'simple-json' })
+  images!: string[];
+
   @Column({ type: 'text', nullable: true })
   description?: string;
+
+  @Column({ type: 'longtext', nullable: true })
+  detailContent?: string;
 
   @Column({ default: true })
   isOnSale!: boolean;
@@ -35,4 +42,9 @@ export class Product extends AppBaseEntity {
 
   @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
   orderItems!: OrderItem[];
+
+  @OneToMany(() => ProductSku, (sku) => sku.product, {
+    cascade: true,
+  })
+  skus!: ProductSku[];
 }

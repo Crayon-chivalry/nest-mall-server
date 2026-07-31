@@ -28,6 +28,7 @@ import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { DeleteRolesDto } from './dto/delete-roles.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -158,9 +159,10 @@ export class RbacController {
   @ApiOperation({ summary: '删除角色' })
   @ApiParam({ name: 'roleId', description: '角色 ID', example: '1' })
   @SuccessMessage('删除成功')
-  @Delete('roles/:roleId')
-  deleteRole(@Param('roleId') roleId: string) {
-    return this.rbacService.deleteRole(Number(roleId));
+  @ApiBody({ type: DeleteRolesDto })
+  @Delete('roles')
+  deleteRole(@Body() deleteRolesDto: DeleteRolesDto) {
+    return this.rbacService.deleteRole(deleteRolesDto);
   }
 
   @RequirePermissions('rbac.menu.create')

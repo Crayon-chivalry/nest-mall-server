@@ -18,6 +18,7 @@ import { AssignUserRolesDto } from './dto/assign-user-roles.dto';
 import { CreateMenuDto } from './dto/create-menu.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { DeleteRolesDto } from './dto/delete-roles.dto';
 import { UpdateMenuDto } from './dto/update-menu.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -508,9 +509,10 @@ export class RbacService {
     return this.rolesRepository.save(role);
   }
 
-  async deleteRole(roleId: number) {
-    const role = await this.rolesRepository.findOne({
-      where: { id: roleId },
+  async deleteRole(deleteRolesDto: DeleteRolesDto) {
+    const ids = [...new Set(deleteRolesDto.ids)];
+    const roles = await this.rolesRepository.find({
+      where: { id: In(ids) },
       relations: {
         users: true,
         permissions: true,
@@ -518,23 +520,29 @@ export class RbacService {
       },
     });
 
-    if (!role) {
-      throw new NotFoundException('Role not found');
+    if (roles.length !== ids.length) {
+      const foundIds = new Set(roles.map((role) => role.id));
+      const missingIds = ids.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(`Roles not found: ${missingIds.join(', ')}`);
     }
 
-    if (role.code === BUILTIN_SUPER_ROLE_CODE) {
+    if (roles.some((role) => role.code === BUILTIN_SUPER_ROLE_CODE)) {
       throw new BadRequestException('Builtin super admin role cannot be deleted');
     }
 
-    role.permissions = [];
-    role.menus = [];
-    role.users = [];
-    await this.rolesRepository.save(role);
-    await this.rolesRepository.remove(role);
+    for (const role of roles) {
+      role.permissions = [];
+      role.menus = [];
+      role.users = [];
+    }
+
+    await this.rolesRepository.save(roles);
+    await this.rolesRepository.remove(roles);
 
     return {
-      id: roleId,
-      deleted: true,
+      ids,
+      deletedCount: roles.length,
+      success: true,
     };
   }
 

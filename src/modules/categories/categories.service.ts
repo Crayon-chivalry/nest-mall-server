@@ -234,6 +234,23 @@ export class CategoriesService {
     });
   }
 
+  async findChildList() {
+    return this.categoriesRepository.find({
+      where: {
+        parent: {
+          parent: IsNull(),
+        },
+      },
+      relations: {
+        parent: true,
+      },
+      order: {
+        sort: 'ASC',
+        id: 'ASC',
+      },
+    });
+  }
+
   async findOne(id: number) {
     const category = await this.categoriesRepository.findOne({
       where: { id },

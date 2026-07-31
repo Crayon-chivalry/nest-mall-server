@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Like, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Like, Repository } from 'typeorm';
 import { PromoSectionLayout } from 'src/common/enums/promo-section-layout.enum';
 import { CreatePromoSectionDto } from './dto/create-promo-section.dto';
+import { DeletePromoSectionsDto } from './dto/delete-promo-sections.dto';
 import { QueryPromoSectionsDto } from './dto/query-promo-sections.dto';
 import { UpdatePromoSectionStatusDto } from './dto/update-promo-section-status.dto';
 import { UpdatePromoSectionDto } from './dto/update-promo-section.dto';
@@ -91,12 +92,28 @@ export class PromoSectionsService {
     return this.promoSectionsRepository.save(promoSection);
   }
 
-  async remove(id: number) {
-    const promoSection = await this.findPromoSectionOrFail(id);
-    await this.promoSectionsRepository.remove(promoSection);
+  async remove(deletePromoSectionsDto: DeletePromoSectionsDto) {
+    const ids = [...new Set(deletePromoSectionsDto.ids)];
+    const promoSections = await this.promoSectionsRepository.find({
+      where: {
+        id: In(ids),
+      },
+      select: ['id'],
+    });
+
+    if (promoSections.length !== ids.length) {
+      const foundIds = new Set(promoSections.map((item) => item.id));
+      const missingIds = ids.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(
+        `首页广告位不存在: ${missingIds.join(', ')}`,
+      );
+    }
+
+    await this.promoSectionsRepository.remove(promoSections);
 
     return {
-      id,
+      ids,
+      deletedCount: promoSections.length,
       success: true,
     };
   }
