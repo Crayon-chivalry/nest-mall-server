@@ -5,6 +5,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsEnum,
   IsInt,
   IsNumberString,
   IsOptional,
@@ -14,6 +15,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { ProductSpecType } from 'src/common/enums/product-spec-type.enum';
 import { ProductSkuDto } from './product-sku.dto';
 
 export class CreateProductDto {
@@ -88,8 +90,19 @@ export class CreateProductDto {
   isOnSale?: boolean;
 
   @ApiPropertyOptional({
+    enum: ProductSpecType,
+    example: ProductSpecType.SINGLE,
+    default: ProductSpecType.SINGLE,
+    description: '规格类型：single 单规格（填价格库存即可）/ multi 多规格（需传 skus）',
+  })
+  @IsOptional()
+  @IsEnum(ProductSpecType)
+  specType?: ProductSpecType;
+
+  @ApiPropertyOptional({
     type: [ProductSkuDto],
-    description: '商品规格 SKU 列表，可配置不同规格的价格、库存、封面图',
+    description:
+      '商品规格 SKU 列表；specType=multi 时必传，specType=single 时不传则由 price/stock 自动生成一条默认 SKU',
   })
   @IsOptional()
   @IsArray()

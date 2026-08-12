@@ -222,10 +222,11 @@ export class CategoriesService {
     };
   }
 
-  async findParentList() {
+  async findParentList(isVisible?: boolean) {
     return this.categoriesRepository.find({
       where: {
         parent: IsNull(),
+        ...(isVisible !== undefined ? { isVisible } : {}),
       },
       order: {
         sort: 'ASC',
@@ -234,12 +235,13 @@ export class CategoriesService {
     });
   }
 
-  async findChildList() {
-    return this.categoriesRepository.find({
+  async findChildList(isVisible?: boolean) {
+    const categories = await this.categoriesRepository.find({
       where: {
         parent: {
           parent: IsNull(),
         },
+        ...(isVisible !== undefined ? { isVisible } : {}),
       },
       relations: {
         parent: true,
@@ -249,6 +251,19 @@ export class CategoriesService {
         id: 'ASC',
       },
     });
+
+    return categories
+      .filter((item) => item.parentId !== null && item.parentId !== undefined)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        icon: item.icon,
+        isVisible: item.isVisible,
+        sort: item.sort,
+        parentId: item.parentId,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      }));
   }
 
   async findOne(id: number) {

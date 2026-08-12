@@ -4,9 +4,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Like, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Like, Repository } from 'typeorm';
+import { ProductSpecType } from 'src/common/enums/product-spec-type.enum';
 import { Category } from '../categories/entities/category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
+import { DeleteProductsDto } from './dto/delete-products.dto';
 import { ProductSkuDto } from './dto/product-sku.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { UpdateProductStatusDto } from './dto/update-product-status.dto';
@@ -27,7 +29,9 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto) {
     const category = await this.findLeafCategoryOrFail(createProductDto.categoryId);
-    const { summary, skus } = this.buildSkuPayload(createProductDto);
+    const specType =
+      createProductDto.specType ?? ProductSpecType.SINGLE;
+    const { summary, skus } = this.buildSkuPayload(createProductDto, undefined, specType);
 
     const product = this.productsRepository.create({
       name: createProductDto.name,
@@ -38,6 +42,7 @@ export class ProductsService {
       description: createProductDto.description,
       detailContent: createProductDto.detailContent,
       isOnSale: createProductDto.isOnSale ?? true,
+      specType,
       category,
       skus: skus.map((sku, index) =>
         this.productSkusRepository.create({
@@ -125,7 +130,14 @@ export class ProductsService {
     product.detailContent = updateProductDto.detailContent ?? product.detailContent;
     product.isOnSale = updateProductDto.isOnSale ?? product.isOnSale;
 
-    const { summary, skus } = this.buildSkuPayload(updateProductDto, product);
+    const specType = updateProductDto.specType ?? product.specType;
+    product.specType = specType;
+
+    const { summary, skus } = this.buildSkuPayload(
+      updateProductDto,
+      product,
+      specType,
+    );
     product.price = summary.price;
     product.stock = summary.stock;
     product.cover = summary.cover;
@@ -150,12 +162,30 @@ export class ProductsService {
     return this.findOne((await this.productsRepository.save(product)).id);
   }
 
-  async remove(id: number) {
-    const product = await this.findProductOrFail(id);
-    await this.productsRepository.remove(product);
+  async remove(deleteProductsDto: DeleteProductsDto) {
+    const ids = [...new Set(deleteProductsDto.ids)];
+    const products = await this.productsRepository.find({
+      where: {
+        id: In(ids),
+      },
+      relations: {
+        skus: true,
+      },
+    });
+
+    if (products.length !== ids.length) {
+      const foundIds = new Set(products.map((item) => item.id));
+      const missingIds = ids.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(
+        `商品不存在: ${missingIds.join(', ')}`,
+      );
+    }
+
+    await this.productsRepository.remove(products);
 
     return {
-      id,
+      ids,
+      deletedCount: products.length,
       success: true,
     };
   }
@@ -202,20 +232,35 @@ export class ProductsService {
 
   private buildSkuPayload(
     productDto: CreateProductDto | UpdateProductDto,
-    existingProduct?: Product,
+    existingProduct: Product | undefined,
+    specType: ProductSpecType,
   ) {
-    const skuInputs =
-      productDto.skus && productDto.skus.length > 0
-        ? productDto.skus
-        : this.buildFallbackSingleSku(productDto, existingProduct);
-
-    if (skuInputs.length === 0) {
-      throw new BadRequestException('商品至少需要一个规格 SKU');
-    }
-
     const currentImages = productDto.images ?? existingProduct?.images ?? [];
     if (currentImages.length === 0) {
       throw new BadRequestException('商品至少需要一张主图');
+    }
+
+    let skuInputs: ProductSkuDto[];
+
+    if (specType === ProductSpecType.MULTI) {
+      if (!productDto.skus || productDto.skus.length === 0) {
+        throw new BadRequestException('多规格商品必须配置至少一个 SKU');
+      }
+
+      const emptySpecIndex = productDto.skus.findIndex(
+        (sku) => !sku.specs || sku.specs.length === 0,
+      );
+      if (emptySpecIndex >= 0) {
+        throw new BadRequestException('多规格商品的每个 SKU 必须包含规格信息');
+      }
+
+      skuInputs = productDto.skus;
+    } else {
+      skuInputs = this.buildFallbackSingleSku(productDto, existingProduct);
+    }
+
+    if (skuInputs.length === 0) {
+      throw new BadRequestException('商品至少需要一个规格 SKU');
     }
 
     const explicitDefaultIndex = skuInputs.findIndex(
@@ -250,20 +295,6 @@ export class ProductsService {
     productDto: CreateProductDto | UpdateProductDto,
     existingProduct?: Product,
   ): ProductSkuDto[] {
-    if (existingProduct?.skus?.length === 1) {
-      const currentSku = existingProduct.skus[0];
-      return [
-        {
-          title: productDto.name ?? currentSku.title,
-          specs: currentSku.specs,
-          price: productDto.price ?? currentSku.price,
-          stock: productDto.stock ?? currentSku.stock,
-          cover: productDto.cover ?? currentSku.cover,
-          isDefault: true,
-        },
-      ];
-    }
-
     if (productDto.price && productDto.stock !== undefined) {
       return [
         {
@@ -278,14 +309,19 @@ export class ProductsService {
     }
 
     if (existingProduct?.skus?.length) {
-      return existingProduct.skus.map((sku) => ({
-        title: sku.title,
-        specs: sku.specs,
-        price: sku.price,
-        stock: sku.stock,
-        cover: sku.cover,
-        isDefault: sku.isDefault,
-      }));
+      const currentSku =
+        existingProduct.skus.find((sku) => sku.isDefault) ??
+        existingProduct.skus[0];
+      return [
+        {
+          title: productDto.name ?? currentSku.title,
+          specs: [],
+          price: productDto.price ?? currentSku.price,
+          stock: productDto.stock ?? currentSku.stock,
+          cover: productDto.cover ?? currentSku.cover,
+          isDefault: true,
+        },
+      ];
     }
 
     return [];

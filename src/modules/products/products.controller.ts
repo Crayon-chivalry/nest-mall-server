@@ -20,6 +20,7 @@ import { OperationLog } from 'src/common/decorators/operation-log.decorator';
 import { SuccessMessage } from 'src/common/decorators/success-message.decorator';
 import { OperationLogType } from 'src/common/enums/operation-log-type.enum';
 import { CreateProductDto } from './dto/create-product.dto';
+import { DeleteProductsDto } from './dto/delete-products.dto';
 import { QueryProductsDto } from './dto/query-products.dto';
 import { UpdateProductStatusDto } from './dto/update-product-status.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -88,16 +89,16 @@ export class ProductsController {
     return this.productsService.updateStatus(id, updateProductStatusDto);
   }
 
-  @ApiOperation({ summary: '删除商品' })
-  @ApiParam({ name: 'id', description: '商品 ID', example: 1 })
+  @ApiOperation({ summary: '批量删除商品' })
+  @ApiBody({ type: DeleteProductsDto })
   @OperationLog({
     module: '商品管理',
-    action: '删除商品',
+    action: '批量删除商品',
     type: OperationLogType.DANGEROUS,
   })
   @SuccessMessage('删除成功')
-  @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.remove(id);
+  @Delete()
+  remove(@Body() deleteProductsDto: DeleteProductsDto) {
+    return this.productsService.remove(deleteProductsDto);
   }
 }

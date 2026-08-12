@@ -26,7 +26,7 @@ export class AppCategoriesController {
   @ApiOperation({ summary: '获取前台一级分类列表' })
   @Get('parent/list')
   findParentList() {
-    return this.categoriesService.findParentList();
+    return this.categoriesService.findParentList(true);
   }
 
   @ApiOperation({ summary: '获取前台分类详情' })

@@ -1,4 +1,5 @@
 import { AppBaseEntity } from 'src/common/entities/base.entity';
+import { ProductSpecType } from 'src/common/enums/product-spec-type.enum';
 import { Category } from 'src/modules/categories/entities/category.entity';
 import { CartItem } from 'src/modules/carts/entities/cart-item.entity';
 import { OrderItem } from 'src/modules/orders/entities/order-item.entity';
@@ -30,6 +31,13 @@ export class Product extends AppBaseEntity {
 
   @Column({ default: true })
   isOnSale!: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: ProductSpecType,
+    default: ProductSpecType.SINGLE,
+  })
+  specType!: ProductSpecType;
 
   @ManyToOne(() => Category, (category) => category.products, {
     nullable: false,
