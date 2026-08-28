@@ -17,6 +17,9 @@ export class Product extends AppBaseEntity {
   @Column({ type: 'int', default: 0 })
   stock!: number;
 
+  @Column({ type: 'int', default: 0 })
+  sales!: number;
+
   @Column({ nullable: true, length: 255 })
   cover?: string;
 

@@ -37,6 +37,7 @@ export class ProductsService {
       name: createProductDto.name,
       price: summary.price,
       stock: summary.stock,
+      sales: 0,
       cover: summary.cover,
       images: createProductDto.images,
       description: createProductDto.description,

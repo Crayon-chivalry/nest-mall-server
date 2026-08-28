@@ -1,5 +1,6 @@
 import { AppBaseEntity } from 'src/common/entities/base.entity';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
+import { PaymentType } from 'src/common/enums/payment-type.enum';
 import { User } from 'src/modules/users/entities/user.entity';
 import { Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 import { OrderItem } from './order-item.entity';
@@ -21,6 +22,19 @@ export class Order extends AppBaseEntity {
 
   @Column({ nullable: true, length: 255 })
   remark?: string;
+
+  @Column({
+    type: 'enum',
+    enum: PaymentType,
+    nullable: true,
+  })
+  paymentType?: PaymentType | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  paymentNo?: string | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  paidAt?: Date | null;
 
   @Column({ length: 20 })
   receiverName!: string;

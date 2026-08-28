@@ -4,8 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  Repository,
+} from 'typeorm';
 import { OrderStatus } from 'src/common/enums/order-status.enum';
+import { PaymentType } from 'src/common/enums/payment-type.enum';
 import { CartItem } from '../carts/entities/cart-item.entity';
 import { Cart } from '../carts/entities/cart.entity';
 import { ProductSku } from '../products/entities/product-sku.entity';
@@ -13,6 +20,8 @@ import { Product } from '../products/entities/product.entity';
 import { ShippingAddress } from '../shipping-addresses/entities/shipping-address.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateOrderItemDto } from './dto/create-order-item.dto';
+import { PayOrderDto } from './dto/pay-order.dto';
+import { QueryOrdersDto } from './dto/query-orders.dto';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from './entities/order.entity';
 
@@ -36,9 +45,17 @@ export class OrdersService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async findAll(userId: number) {
-    return this.ordersRepository.find({
-      where: { user: { id: userId } },
+  async findAll(userId: number, queryDto: QueryOrdersDto) {
+    const page = queryDto.page ?? 1;
+    const pageSize = queryDto.pageSize ?? 10;
+    const where: FindOptionsWhere<Order> = { user: { id: userId } };
+
+    if (queryDto.status) {
+      where.status = queryDto.status;
+    }
+
+    const [list, total] = await this.ordersRepository.findAndCount({
+      where,
       relations: {
         user: true,
         items: {
@@ -49,7 +66,18 @@ export class OrdersService {
       order: {
         id: 'DESC',
       },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     });
+
+    return {
+      list,
+      pagination: {
+        page,
+        pageSize,
+        total,
+      },
+    };
   }
 
   async create(userId: number, createOrderDto: CreateOrderDto) {
@@ -72,7 +100,6 @@ export class OrdersService {
         : await this.resolveDirectItems(createOrderDto.items ?? []);
 
       let totalAmount = 0;
-      const touchedProducts = new Set<number>();
 
       for (const item of checkoutItems) {
         if (item.product.isOnSale !== true) {
@@ -83,8 +110,6 @@ export class OrdersService {
           throw new BadRequestException(`规格库存不足: ${item.sku.title}`);
         }
 
-        item.sku.stock -= item.quantity;
-        touchedProducts.add(item.product.id);
         totalAmount += Number(item.sku.price) * item.quantity;
       }
 
@@ -100,6 +125,9 @@ export class OrdersService {
         district: shippingAddress.district,
         detailAddress: shippingAddress.detailAddress,
         postalCode: shippingAddress.postalCode ?? null,
+        paymentType: null,
+        paymentNo: null,
+        paidAt: null,
         user: { id: userId },
       });
 
@@ -120,11 +148,6 @@ export class OrdersService {
       );
 
       await manager.save(OrderItem, orderItems);
-      await manager.save(ProductSku, checkoutItems.map((item) => item.sku));
-
-      for (const productId of touchedProducts) {
-        await this.syncProductSummary(productId, manager);
-      }
 
       if (createOrderDto.cartItemIds?.length) {
         const cartItems = await manager.find(CartItem, {
@@ -138,6 +161,87 @@ export class OrdersService {
 
       return manager.findOne(Order, {
         where: { id: savedOrder.id },
+        relations: {
+          user: true,
+          items: {
+            product: true,
+            sku: true,
+          },
+        },
+      });
+    });
+  }
+
+  async pay(userId: number, orderId: number, payOrderDto: PayOrderDto) {
+    return this.dataSource.transaction(async (manager) => {
+      const orderRepository = manager.getRepository(Order);
+      const skuRepository = manager.getRepository(ProductSku);
+      const productRepository = manager.getRepository(Product);
+      const orderItemRepository = manager.getRepository(OrderItem);
+
+      const order = await orderRepository.findOne({
+        where: { id: orderId, user: { id: userId } },
+        relations: {
+          user: true,
+          items: {
+            product: true,
+            sku: true,
+          },
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundException('订单不存在');
+      }
+
+      if (order.status !== OrderStatus.PENDING) {
+        throw new BadRequestException('当前订单不是待支付状态');
+      }
+
+      const touchedProducts = new Set<number>();
+
+      for (const item of order.items) {
+        const sku = await skuRepository.findOne({
+          where: { id: item.sku?.id },
+          relations: {
+            product: true,
+          },
+        });
+
+        if (!sku) {
+          throw new NotFoundException(`订单规格不存在: ${item.skuTitle}`);
+        }
+
+        if (sku.stock < item.quantity) {
+          throw new BadRequestException(`规格库存不足: ${sku.title}`);
+        }
+
+        sku.stock -= item.quantity;
+        await skuRepository.save(sku);
+
+        const product = sku.product;
+        product.sales += item.quantity;
+        await productRepository.save(product);
+
+        item.sku = sku;
+        item.product = product;
+        touchedProducts.add(product.id);
+      }
+
+      order.status = OrderStatus.PAID;
+      order.paymentType = payOrderDto.paymentType;
+      order.paymentNo = this.generatePaymentNo(payOrderDto.paymentType);
+      order.paidAt = new Date();
+
+      await orderRepository.save(order);
+      await orderItemRepository.save(order.items);
+
+      for (const productId of touchedProducts) {
+        await this.syncProductSummary(productId, manager);
+      }
+
+      return orderRepository.findOne({
+        where: { id: order.id },
         relations: {
           user: true,
           items: {
@@ -284,5 +388,12 @@ export class OrdersService {
     }
 
     return orderNo;
+  }
+
+  private generatePaymentNo(paymentType: PaymentType) {
+    const prefix = paymentType === PaymentType.ALIPAY ? 'ALI' : 'WX';
+    return `${prefix}${Date.now()}${Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0')}`;
   }
 }
