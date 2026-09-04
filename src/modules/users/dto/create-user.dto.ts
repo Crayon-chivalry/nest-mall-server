@@ -20,12 +20,6 @@ export class CreateUserDto {
   @Length(6, 20, { message: '密码长度必须在 6 到 20 个字符之间' })
   password!: string;
 
-  @ApiPropertyOptional({ example: '123456', description: '支付密码' })
-  @IsOptional()
-  @IsString({ message: '支付密码必须为字符串' })
-  @Length(6, 20, { message: '支付密码长度必须在 6 到 20 个字符之间' })
-  payPassword?: string;
-
   @ApiProperty({ example: '张三', description: '昵称' })
   @IsString({ message: '昵称必须为字符串' })
   @Length(2, 30, { message: '昵称长度必须在 2 到 30 个字符之间' })

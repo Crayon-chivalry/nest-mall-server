@@ -39,7 +39,9 @@ export class AppShippingAddressesController {
     return this.shippingAddressesService.findAll(user.id);
   }
 
-  @ApiOperation({ summary: '获取当前用户默认收货地址' })
+  @ApiOperation({
+    summary: '获取当前用户默认收货地址，无默认地址时返回第一条，无地址时返回 null',
+  })
   @Get('default')
   findDefault(@CurrentUser() user: RequestUser) {
     return this.shippingAddressesService.findDefault(user.id);

@@ -45,15 +45,11 @@ export class ShippingAddressesService {
   }
 
   async findDefault(userId: number) {
-    const address = await this.shippingAddressesRepository.findOne({
-      where: { user: { id: userId }, isDefault: true },
+    // 优先取默认地址；没有默认地址时回退到第一条地址，方便前台直接使用
+    return this.shippingAddressesRepository.findOne({
+      where: { user: { id: userId } },
+      order: { isDefault: 'DESC', id: 'DESC' },
     });
-
-    if (!address) {
-      throw new NotFoundException('Default shipping address not found');
-    }
-
-    return address;
   }
 
   async findOne(userId: number, id: number) {

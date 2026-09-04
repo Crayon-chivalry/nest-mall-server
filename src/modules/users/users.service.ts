@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { hash } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import {
   BUILTIN_ADMIN_ACCOUNT,
   BUILTIN_ADMIN_NICKNAME,
@@ -22,10 +22,12 @@ import { CreateAdminDto } from './dto/create-admin.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { DeleteUsersDto } from './dto/delete-users.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 
-export type SafeUser = Omit<User, 'password' | 'payPassword'>;
+export type SafeUser = Omit<User, 'password'>;
 
 @Injectable()
 export class UsersService {
@@ -41,9 +43,6 @@ export class UsersService {
       ...createUserDto,
       account: null,
       password: await this.hashPassword(createUserDto.password),
-      payPassword: createUserDto.payPassword
-        ? await this.hashPassword(createUserDto.payPassword)
-        : null,
       userId: await this.generateUserId(),
       status: createUserDto.status ?? UserStatus.NORMAL,
       role: UserRole.CUSTOMER,
@@ -279,8 +278,52 @@ export class UsersService {
       user.password = await this.hashPassword(updateUserDto.password);
     }
 
-    if (updateUserDto.payPassword !== undefined) {
-      user.payPassword = await this.hashPassword(updateUserDto.payPassword);
+    const savedUser = await this.usersRepository.save(user);
+    return this.toSafeUser(savedUser);
+  }
+
+  async updatePassword(id: number, updatePasswordDto: UpdatePasswordDto) {
+    const user = await this.usersRepository.findOne({ where: { id } });
+
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    if (!(await compare(updatePasswordDto.oldPassword, user.password))) {
+      throw new BadRequestException('原密码不正确');
+    }
+
+    if (updatePasswordDto.oldPassword === updatePasswordDto.newPassword) {
+      throw new BadRequestException('新密码不能与原密码相同');
+    }
+
+    user.password = await this.hashPassword(updatePasswordDto.newPassword);
+    await this.usersRepository.save(user);
+
+    return true;
+  }
+
+  async updateProfile(id: number, updateProfileDto: UpdateProfileDto) {
+    const user = await this.usersRepository.findOne({ where: { id } });
+
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+
+    if (
+      updateProfileDto.phone &&
+      updateProfileDto.phone !== user.phone
+    ) {
+      await this.ensurePhoneUnique(updateProfileDto.phone);
+      user.phone = updateProfileDto.phone;
+    }
+
+    if (updateProfileDto.nickname !== undefined) {
+      user.nickname = updateProfileDto.nickname;
+    }
+
+    if (updateProfileDto.avatar !== undefined) {
+      user.avatar = updateProfileDto.avatar;
     }
 
     const savedUser = await this.usersRepository.save(user);
@@ -300,11 +343,7 @@ export class UsersService {
   }
 
   toSafeUser(user: User): SafeUser {
-    const {
-      password: _password,
-      payPassword: _payPassword,
-      ...safeUser
-    } = user;
+    const { password: _password, ...safeUser } = user;
     return safeUser;
   }
 

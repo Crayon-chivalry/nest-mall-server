@@ -52,6 +52,19 @@ export class OrdersController {
     return this.ordersService.findAll(user.id, queryDto);
   }
 
+  @ApiOperation({ summary: '获取订单数徽标（待付款、待发货、待收货）' })
+  @Get('badges')
+  findBadges(@CurrentUser() user: RequestUser) {
+    return this.ordersService.findBadges(user.id);
+  }
+
+  @ApiOperation({ summary: '获取订单详情' })
+  @ApiParam({ name: 'id', description: '订单 ID', example: 1 })
+  @Get(':id')
+  findOne(@CurrentUser() user: RequestUser, @Param('id', ParseIntPipe) id: number) {
+    return this.ordersService.findOne(user.id, id);
+  }
+
   @ApiOperation({ summary: '提交订单' })
   @ApiBody({ type: CreateOrderDto })
   @SuccessMessage('提交成功')

@@ -80,6 +80,45 @@ export class OrdersService {
     };
   }
 
+  async findOne(userId: number, orderId: number) {
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderId, user: { id: userId } },
+      relations: {
+        user: true,
+        items: {
+          product: true,
+          sku: true,
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('订单不存在');
+    }
+
+    return order;
+  }
+
+  async findBadges(userId: number) {
+    const [pending, paid, shipped] = await Promise.all([
+      this.ordersRepository.count({
+        where: { user: { id: userId }, status: OrderStatus.PENDING },
+      }),
+      this.ordersRepository.count({
+        where: { user: { id: userId }, status: OrderStatus.PAID },
+      }),
+      this.ordersRepository.count({
+        where: { user: { id: userId }, status: OrderStatus.SHIPPED },
+      }),
+    ]);
+
+    return {
+      pending,
+      paid,
+      shipped,
+    };
+  }
+
   async create(userId: number, createOrderDto: CreateOrderDto) {
     this.ensureOrderSourceProvided(createOrderDto);
 
